@@ -1,0 +1,8 @@
+/target
+/data
+*.db
+*.db-wal
+*.db-shm
+kaimeter.toml
+*.bundle
+.DS_Store

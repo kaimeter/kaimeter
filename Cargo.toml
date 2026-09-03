@@ -1,0 +1,38 @@
+[package]
+name = "kaimeter-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "Apache-2.0"
+description = "Kaimeter: open-core CBAM compliance toolkit (core server)"
+repository = "https://github.com/kaimeter/kaimeter"
+readme = "README.md"
+publish = false
+
+[dependencies]
+aes-gcm = "0.10.3"
+anyhow = "1"
+argon2 = "0.5.3"
+axum = "0.8"
+base64 = "0.23.1"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+hex = "0.4"
+rand_core = { version = "0.6", features = ["getrandom"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10.9"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+toml = "0.8"
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

@@ -1,0 +1,7 @@
+# Kaimeter core server — example configuration.
+# Optional: every key has a default; environment variables override this file.
+# Copy to ./kaimeter.toml (or point KAIMETER_CONFIG at it) to use.
+
+addr = "127.0.0.1:8080"
+data_dir = "./data"
+locales_dir = "./locales"

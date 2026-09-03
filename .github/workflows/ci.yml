@@ -1,0 +1,121 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: kaimeter-core
+
+jobs:
+  fmt:
+    name: cargo fmt --check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  fmt-md:
+    name: prettier --check (markdown)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx -y prettier@3.9.6 --check "**/*.md"
+
+  clippy:
+    name: cargo clippy -D warnings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-features --workspace
+
+  build-release:
+    name: cargo build --release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+      - name: Stage release artifacts
+        run: |
+          mkdir -p dist
+          cp "target/release/${BINARY_NAME}" "dist/${BINARY_NAME}"
+          cp deploy/kaimeter.service dist/
+          cp Dockerfile dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-binary
+          path: dist/
+          if-no-files-found: error
+
+  sign-release:
+    name: cosign keyless sign + SBOM provenance
+    needs: [build-release]
+    if: github.event_name == 'release'
+    permissions:
+      contents: read
+      # Required for cosign keyless signing via GitHub OIDC (Fulcio/Rekor).
+      id-token: write
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-binary
+          path: dist
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Generate SBOM (syft)
+        uses: anchore/sbom-action@v0
+        with:
+          artifact-name: dist/${{ env.BINARY_NAME }}
+          format: spdx-json
+          upload-artifact: true
+
+      - name: Sign binary with cosign (keyless, OIDC)
+        run: |
+          cosign sign-blob \
+            --yes \
+            --bundle "dist/${BINARY_NAME}.bundle" \
+            "dist/${BINARY_NAME}"
+
+      - name: Attest SBOM provenance (keyless, OIDC)
+        run: |
+          cosign attest-blob \
+            --yes \
+            --predicate "sbom-spdx.json" \
+            --type spdxjson \
+            --bundle "dist/${BINARY_NAME}.sbom.attest.bundle" \
+            "dist/${BINARY_NAME}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-release
+          path: |
+            dist/${{ env.BINARY_NAME }}.bundle
+            dist/${{ env.BINARY_NAME }}.sbom.attest.bundle
+          if-no-files-found: error

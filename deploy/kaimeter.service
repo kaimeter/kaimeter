@@ -1,0 +1,41 @@
+[Unit]
+Description=Kaimeter core server (CBAM compliance toolkit)
+Documentation=https://github.com/kaimeter/kaimeter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+# Raw release binary; adjust paths for your install layout.
+ExecStart=/usr/local/bin/kaimeter
+Environment=KAIMETER_ADDR=127.0.0.1:8080
+Environment=KAIMETER_DATA_DIR=/var/lib/kaimeter
+Environment=KAIMETER_LOCALES_DIR=/etc/kaimeter/locales
+Environment=RUST_LOG=info
+# The data dir must exist and be writable by the service user.
+StateDirectory=kaimeter
+ConfigurationDirectory=kaimeter
+User=kaimeter
+Group=kaimeter
+Restart=on-failure
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

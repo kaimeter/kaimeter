@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EInvoice>
+  <InvoiceNumber>24312000000123456789</InvoiceNumber>
+  <IssueDate>2026-07-15</IssueDate>
+  <SellerName>某钢铁有限公司</SellerName>
+  <Items>
+    <Item><Name>电费</Name><Quantity unit="kWh">4200.00</Quantity><Amount>3360.00</Amount></Item>
+  </Items>
+  <TaxAuthoritySignature present="true"/>
+</EInvoice>
