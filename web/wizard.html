@@ -162,6 +162,16 @@ button.btn:disabled{background:var(--wash); color:var(--faint); cursor:not-allow
   font-family:inherit; font-size:13px; line-height:1; cursor:pointer;
 }
 .chip button:hover{color:var(--ink)}
+/* Hover a chip to inspect the file: raw contents + every extracted field */
+.chip[data-tip]{position:relative; cursor:help}
+.chip[data-tip]::after{
+  content:attr(data-tip); display:none; position:absolute;
+  top:calc(100% + 6px); left:0; width:max-content; max-width:380px;
+  background:var(--card); border:1px solid var(--ink); border-radius:2px;
+  box-shadow:3px 3px 0 var(--wash); padding:8px 11px; font-size:12px;
+  line-height:1.55; color:var(--ink); text-align:left; white-space:pre-line; z-index:40;
+}
+.chip[data-tip]:hover::after{display:block}
 input[type=file]{display:none}
 
 .radio{display:flex; gap:14px}
@@ -174,6 +184,7 @@ input[type=file]{display:none}
 .verify-row .lead{flex:1; border-bottom:1px dotted var(--faint); transform:translateY(-4px)}
 .verify-row .v{color:var(--gray); font-size:13px; font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right}
 .verify-row input{accent-color:var(--ink); width:17px; height:17px; flex:none; align-self:center}
+.verify-row input[type=text]{width:150px; text-align:right; font-family:var(--mono); font-size:13px; padding:3px 6px; background:var(--card); border:1px solid var(--rule); border-radius:2px; color:var(--ink); height:auto}
 .doctrine{border:none; border-left:3px solid var(--ink); border-radius:0; padding:6px 0 6px 14px; font-family:var(--serif); font-style:italic; font-size:14px; color:var(--gray); margin:18px 0 4px}
 
 .math-line{display:flex; align-items:baseline; gap:10px; padding:8px 0; border-bottom:none; font-size:14px}
@@ -340,6 +351,7 @@ body#lang-zh:target [data-lang="en"]{display:none!important}
   <p class="sub"><span data-lang="en">The exporter submits the dossier; you review the evidence and mark the pack verified. Nothing is edited here.</span><span data-lang="zh">出口商提交档案；您审查证据并将数据包标记为已核实。此处不编辑任何内容。</span></p>
   <div class="card">
     <p class="note" id="reviewNote" style="font-size:13px"></p>
+    <p class="note" id="verifyHowNote" style="font-size:13px"></p>
     <p style="margin-top:10px"><button class="btn ghost" onclick="pickPackFile()">✓ <span data-lang="en">Verify a pack file</span><span data-lang="zh">核查数据包文件</span></button>
     <input type="file" id="packFile" accept=".json,.jsonld,application/json" style="display:none" onchange="onPackFile(this)"></p>
     <p class="note" id="verifyResult" style="margin-top:6px"></p>
@@ -402,8 +414,8 @@ body#lang-zh:target [data-lang="en"]{display:none!important}
       <p class="note" style="margin-top:10px"><b><span data-lang="en">CBAM — the Carbon Border Adjustment Mechanism — is the EU's charge on carbon in imports.</span><span data-lang="zh">CBAM（碳边境调节机制）是欧盟对进口商品所含碳排放的收费。</span></b> <span data-lang="en">From January 1st, 2026, iron &amp; steel, aluminium, cement, fertilisers, hydrogen, and electricity imported into the EU carry a charge on the carbon emitted to produce them.</span><span data-lang="zh">自 2026 年 1 月 1 日起，进口到欧盟的钢铁、铝、水泥、化肥、氢和电力，须为其生产过程排放的碳付费。</span></p>
       <p class="note"><b><span data-lang="en">The EU importer pays — nobody outside the EU pays the EU directly.</span><span data-lang="zh">由欧盟进口商支付——欧盟以外的工厂和贸易公司不直接向欧盟付款。</span></b> <span data-lang="en">The importer buys CBAM certificates — one per tonne of embedded CO₂e, at the EU's carbon-market price — and files one annual declaration.</span><span data-lang="zh">进口商购买 CBAM 证书——每吨隐含 CO₂e 一张，价格按欧盟碳市场价格计算——并每年申报一次。</span></p>
       <p class="note"><b><span data-lang="en">The bill is computed from the mill's data.</span><span data-lang="zh">账单金额由工厂的数据决定。</span></b> <span data-lang="en">Without verified data from the producer, the importer must use Brussels' conservative default values plus a penalty mark-up: +10% in 2026, +20% in 2027, +30% from 2028. Unverified data is the expensive option.</span><span data-lang="zh">若没有生产商提供的经核实数据，进口商只能按欧盟从严设定的默认值加罚金加价计算：2026 年 +10%、2027 年 +20%、2028 年起 +30%。没有数据，就是最贵的选择。</span></p>
-      <p class="note"><b><span data-lang="en">The charge is small now and grows every year.</span><span data-lang="zh">现在的费用很小，但逐年递增。</span></b> <span data-lang="en">Certificates go on sale February 1st, 2027; the first annual declaration is due September 30th, 2027; the payable share rises from 2.5% in 2026 to 100% by 2034.</span><span data-lang="zh">证书 2027 年 2 月 1 日开售；首次年度申报 2027 年 9 月 30 日截止；应缴份额从 2026 年的 2.5% 升至 2034 年的 100%。</span></p>
-      <p class="note"><b><span data-lang="en">Kaimeter is the data toolchain for that chain.</span><span data-lang="zh">Kaimeter 就是这条链条的数据工具。</span></b> <span data-lang="en">Mills produce verified data packs on their own machine — nothing leaves without approval; traders pass them through; importers file from them. Every step runs on the user's own machine; no Kaimeter server participates at any point.</span><span data-lang="zh">工厂在本机生成经核实的数据包——未经批准绝不外发；贸易公司负责传递；进口商据此申报。每一步都运行在用户自己的机器上，全程没有任何 Kaimeter 服务器参与。</span></p>
+      <p class="note"><b><span data-lang="en">The charge is small now and grows every year.</span><span data-lang="zh">现在的费用很小，但逐年递增。</span></b> <span data-lang="en">Who buys: only the authorised EU importer — the mill never buys. From whom: the European Commission, through the EU CBAM Registry. When: sales open February 1st, 2027; after that the importer buys whenever it suits during the year — there is no single purchase day. At what price: the EU ETS auction average, published per quarter in 2026 and per week from 2027 — it does not move in real time. The first surrender is due with the annual declaration on September 30th, 2027, and the payable share rises from 2.5% in 2026 to 100% by 2034.</span><span data-lang="zh">谁买：仅由经授权的欧盟进口商购买——工厂永远不用买。向谁买：通过欧盟 CBAM 登记处，向欧盟委员会购买。何时买：2027 年 2 月 1 日开售；此后进口商可在年内自行选择购买时机——没有统一的购买日。价格如何定：跟随欧盟 ETS 拍卖均价，2026 年按季度、2027 年起按周公布——并非实时变动。首次交缴随年度申报于 2027 年 9 月 30 日截止，应缴份额从 2026 年的 2.5% 升至 2034 年的 100%。</span></p>
+      <div id="primerSched"></div>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px">
         <button class="btn ghost" id="primerClose" style="display:none" onclick="closeRoleModal()"><span data-lang="en">Close</span><span data-lang="zh">关闭</span></button>
         <button class="btn" id="primerNext" onclick="showWelcomeStep(3)"><span data-lang="en">Continue</span><span data-lang="zh">继续</span></button>
@@ -438,9 +450,9 @@ const L = {
     materialsTitle: "2 · Raw-material invoices + mill test certs", materialsHint: "Purchase invoices and mill test certificates for upstream precursor emissions.",
     productionTitle: "3 · Production output + customs records", productionHint: "Production log, outbound records, customs declarations — the net-tonne denominator and CN codes.",
     addFiles: "Add files", none: "none attached",
-    extFields: "{n} fields extracted from e-fapiao — verify each in step 4",
+    extFields: "{n} fields extracted from your documents — confirm each below",
     noStructured: "no structured data — manual entry",
-    step2Title: "Enter the fields", step2Hint: "Every field below appears in the final record. Nothing is saved until you verify them in step 4.",
+    step2Title: "Enter the fields", step2Hint: "Every field below appears in the final record. Nothing is saved until you verify them in step 3.",
     sampleCodes: "Sample CN codes for the demo — the full catalog seeds from the Commission workbook in the core.",
     cnCode: "CN code", goods: "Goods description", sector: "Sector", netMass: "Net mass (kg)",
     origin: "Country of origin", prodCountry: "Production country", installation: "Installation ID",
@@ -450,16 +462,22 @@ const L = {
     emissionsPerT: "Embedded emissions (tCO₂e per tonne)", verifierCheck: "Verified by an EU-accredited verifier",
     verifyLaterHint: "Verification is not self-declared: after this dossier is reviewed, an EU-accredited verifier marks the pack verified (Verifier role → Review).",
     carbonPaid: "Carbon price already paid (€)",
-    step3Title: "The math — updates as you type", step3Hint: "The same formulas as the declaration: mark-ups per year, the CBAM factor, exposure against the EU carbon price.",
+    carbonPaidReq: "Required — enter 0 if no carbon price was paid abroad.",
+    step3Title: "The math", step3Hint: "The same formulas as the declaration: mark-ups per year, the CBAM factor, exposure against the EU carbon price.",
     schedDetails: "Reference schedules — mark-up & CBAM factor",
     massT: "Net mass", basisLbl: "Basis", markUp: "Default-value mark-up", emissionsTotal: "Total embedded emissions",
     factorLbl: "CBAM factor — payable share",
     grossLbl: "Gross exposure", netLbl: "Net certificate obligation",
+    emissionsAfterMarkup: "Embedded emissions incl. mark-up",
+    payableEm: "Certificate-covered emissions",
+    etsCached: "EU carbon price (cached)",
     exposure: "Exposure", certCost: "Certificate cost", minusPaid: "less carbon price paid",
     formulaNet: "Net = emissions × factor × price − carbon price paid. Gross = emissions × price − carbon price paid. Both are shown side by side until the Art 9(5) deduction order is final.",
     markupSchedule: "Mark-up schedule (Implementing Reg (EU) 2025/2621)",
     factorSchedule: "CBAM factor schedule — payable share (complement of the Art 10a(1a) free-allocation factor)",
     tipMass: "Your calendar-year total across all CBAM goods combined. Under 50 tonnes: no declaration — keep records only. Over the line: every tonne of the year becomes reportable. Electricity and hydrogen get no exemption and never count toward the line.",
+    tipCn: "CN here means Combined Nomenclature — the EU's 8-digit customs commodity code that classifies the goods for the declaration. It is not the country code CN (China).",
+    tipEmissions: "Embedded emissions are the greenhouse gases released to produce one tonne of this product, in tonnes of CO₂-equivalent — the number the whole bill multiplies. Actual: from the mill's measured data, verified by an EU-accredited verifier. Default: Brussels' conservative published value for this CN code, carrying the penalty mark-up until verified.",
     tipEts: "This is the EU's carbon price — the market price of emitting one tonne of CO₂ in the EU, set by the EU's carbon market, the Emissions Trading System (ETS). CBAM certificates — one per tonne of embedded CO₂e in imported goods — are priced off that market and bought only by the authorised EU importer. Cached means the last price stored on this device: Kaimeter runs offline and never fetches anything — enter it by hand, or update it when you choose to connect.",
     tipDeadlines: "Certificate sales open February 1st, 2027; the first annual declaration is due September 30th, 2027. All deadlines are Brussels time (CET/CEST).",
     tipDossier: "A complete CBAM dossier needs three document classes: energy & fuel bills, raw-material invoices with mill test certificates, and production output & customs records. The tags below show which classes you have attached.",
@@ -494,8 +512,9 @@ const L = {
     packWorthNote: "Estimate only — the buyer's bill also depends on the carbon price when they file and their Article 9 position. Commission defaults are conservative, so verified actuals usually save more than the mark-up alone.",
     packPreview: "Pack preview — fields that will leave this device",
     packNotIncluded: "Never included: supplier identity, prices, margins, internal notes.",
-    packSealedNote: "Exported from the served app, the pack is a signed W3C Verifiable Presentation (Ed25519) with a Merkle commitment to the production evidence — any later edit to a number breaks the signature, and the buyer verifies offline. From file:// it downloads as a plain demonstration JSON.",
+    packSealedNote: "Exported from the served app, the pack is sealed: a W3C Verifiable Presentation signed with the mill's device key (Ed25519). The signature covers a fingerprint of the production evidence — a Merkle commitment, one hash that certifies every attached record. Change one number anywhere and the signature breaks; the buyer's machine proves it offline, contacting no one. From file:// it downloads as a plain demonstration JSON.",
     markupUntil: "until the verifier signs", onceVerified: "Once verified",
+    confirmExtracts: "Read from the file — edit any value, then tick each field you have checked against the source.",
     removeDoc: "Remove",
     prefillNote: "Prefilled from {f} — check against the source before saving.",
     verifyOk: "Signature valid — pack intact",
@@ -504,6 +523,7 @@ const L = {
     packRoleNoteExporter: "Attach the mill records, verify the fields, and hand your buyer a clean data pack: emissions per CN code — no pricing, no internal data. You approve every export.",
     packRoleNoteTrader: "Packs pass through you: aggregate suppliers, check each order, and give every buyer its own pack. Supplier identity and pricing stay masked.",
     reviewNote: "The exporter submits the dossier; you review the evidence and mark the pack verified; the buyer's declaration then relies on it. Verification is one-way — nothing here is edited.",
+    verifyHow: "How this maps to the real world: verification is a regulated act, not a button. An EU-accredited verification body (accredited by a National Accreditation Body and listed in the EU CBAM Registry, per Delegated Reg (EU) 2025/2551) audits the dossier and issues a signed attestation — that attestation is what the importer's declaration relies on. Mark verified records exactly that act on the pack, and anyone can re-prove the seal offline with Verify a pack file.",
     packVerifyPending: "Pending verification", reviewVerifyBtn: "Mark verified", toastVerifiedPack: "Pack verified by the verifier.", verifyStatus: "Verification",
     roleTitle: "Who are you?", roleSub: "Kaimeter renders the workflow for your role. You can change it anytime — the role button in the top bar.",
     roleImporter: "Importer / declarant", roleImporterDesc: "Track what you import, watch the 50-tonne line, project the certificate bill, prepare the filing.",
@@ -526,9 +546,9 @@ const L = {
     materialsTitle: "2 · 原料采购发票 + 材质单", materialsHint: "用于上游前体排放的采购发票与材质单。",
     productionTitle: "3 · 生产产出 + 报关记录", productionHint: "生产月报、出库单、报关单——净吨数分母与 CN 编码的来源。",
     addFiles: "添加文件", none: "未添加",
-    extFields: "已从数电发票提取 {n} 个字段——请在第 4 步逐一核实",
+    extFields: "已从文件提取 {n} 个字段——请在下方逐项校对确认",
     noStructured: "无结构化数据——手动输入",
-    step2Title: "填写字段", step2Hint: "以下每个字段都会进入最终记录。在第 4 步逐一核实之前，不会保存任何内容。",
+    step2Title: "填写字段", step2Hint: "以下每个字段都会进入最终记录。在第 3 步逐一核实之前，不会保存任何内容。",
     sampleCodes: "演示用示例 CN 编码——完整目录将由欧盟委员会工作簿在核心中播种。",
     cnCode: "CN 编码", goods: "商品描述", sector: "行业", netMass: "净质量（千克）",
     origin: "原产国", prodCountry: "生产国", installation: "装置编号",
@@ -538,16 +558,22 @@ const L = {
     emissionsPerT: "隐含排放（吨 CO₂e / 吨）", verifierCheck: "已经欧盟认可的核查机构核查",
     verifyLaterHint: "核实不可自行声明：本档案经审查后，由欧盟认可的核查机构在「核查人 → 核查审阅」中将数据包标记为已核实。",
     carbonPaid: "已支付的碳价（€）",
-    step3Title: "实时计算——随输入更新", step3Hint: "与申报相同的公式：逐年加价、CBAM 系数、对照欧盟碳价的敞口。",
+    carbonPaidReq: "必填——若未在国外支付碳价，请填 0。",
+    step3Title: "计算", step3Hint: "与申报相同的公式：逐年加价、CBAM 系数、对照欧盟碳价的敞口。",
     schedDetails: "参考费率表——加价与 CBAM 系数",
     massT: "净质量", basisLbl: "计算基础", markUp: "默认值加价", emissionsTotal: "总隐含排放",
     factorLbl: "CBAM 系数——应缴份额",
     grossLbl: "毛敞口", netLbl: "净证书义务",
+    emissionsAfterMarkup: "含加价的隐含排放",
+    payableEm: "证书覆盖的排放",
+    etsCached: "欧盟碳价（缓存）",
     exposure: "敞口", certCost: "证书成本", minusPaid: "减去已付碳价",
     formulaNet: "净额 = 排放 × 系数 × 碳价 − 已付碳价。毛额 = 排放 × 碳价 − 已付碳价。在 Art 9(5) 扣减顺序定案前，两者并列展示。",
     markupSchedule: "加价表（Implementing Reg (EU) 2025/2621）",
     factorSchedule: "CBAM 系数表——应缴份额（Art 10a(1a) 免配额系数的补数）",
     tipMass: "日历年内全部 CBAM 商品合计的累计净质量。低于 50 吨：无需申报，仅保留记录。跨线后：该年度每一吨都须申报。电力与氢不享豁免，从不计入红线。",
+    tipCn: "这里的 CN 指 Combined Nomenclature（欧盟组合命名法）——欧盟用于申报的 8 位海关商品编码，并非国家代码 CN（中国）。",
+    tipEmissions: "隐含排放指生产一吨该产品所排放的温室气体总量，以吨 CO₂e 表示——整个账单都由这个数字相乘得出。实际值：来自工厂实测数据，经欧盟认可核查机构核查。默认值：欧盟为该 CN 编码公布的保守值，核实前需承担惩罚性加价。",
     tipEts: "这是欧盟的碳价——在欧盟境内排放一吨 CO₂ 的市场价格，由欧盟碳市场（碳排放交易体系，ETS）决定。CBAM 证书（进口货物每吨隐含 CO₂e 一张）按该市场定价，且仅由经授权的欧盟进口商购买。“缓存”指本机保存的最新价格：Kaimeter 离线运行、从不联网获取——可手动输入，或在您选择联网时更新。",
     tipDeadlines: "证书 2027 年 2 月 1 日开售；首次年度申报 2027 年 9 月 30 日截止。所有截止日期均为布鲁塞尔时间（CET/CEST）。",
     tipDossier: "完整的 CBAM 档案需要三类文档：能源与燃料票据、原料采购发票与材质单、生产产出与报关记录。下方标签显示您已添加的类别。",
@@ -582,8 +608,9 @@ const L = {
     packWorthNote: "仅为估算——买家账单还取决于其申报时的碳价与第 9 条扣除情况。欧盟默认值从严设定，经核实的实际数据通常节省更多。",
     packPreview: "数据包预览——将离开本机的字段",
     packNotIncluded: "绝不包含：供应商身份、价格、利润、内部备注。",
-    packSealedNote: "通过 Kaimeter 程序导出时，数据包为带 Ed25519 签名的 W3C 可验证呈报，并对生产证据作出 Merkle 承诺——导出后改动任何一个数字都会破坏签名，买家可离线校验。以 file:// 打开时下载的是纯文本演示 JSON。",
+    packSealedNote: "通过 Kaimeter 程序导出时，数据包是密封的：一份 W3C 可验证呈报，以工厂设备密钥（Ed25519）签名。签名覆盖生产证据的指纹——即 Merkle 承诺，一个哈希覆盖全部附件记录。改动任何一个数字，签名即被破坏；买家机器可离线证明，无需联系任何人。以 file:// 打开时下载的是纯文本演示 JSON。",
     markupUntil: "核查人签核前适用", onceVerified: "核实后",
+    confirmExtracts: "文件读出内容——可修改数值，逐项对照原件后勾选。",
     removeDoc: "移除",
     prefillNote: "已从 {f} 预填——保存前请对照原件核实。",
     verifyOk: "签名有效——数据包完整",
@@ -592,6 +619,7 @@ const L = {
     packRoleNoteExporter: "添加工厂记录、核实字段，向买方交付干净的数据包：按 CN 编码的排放数据——不含价格与内部数据。每次导出都需您批准。",
     packRoleNoteTrader: "数据包经由您流转：汇总供应商、逐单核对，为每个买家提供各自的数据包。供应商身份与价格保持遮蔽。",
     reviewNote: "出口商提交档案；您审查证据并将数据包标记为已核实；买方的申报即以此为依据。核实为单向操作——此处不编辑任何内容。",
+    verifyHow: "这与现实世界的对应关系：核查是受监管的法定行为，而不是一个按钮。经欧盟认可的核查机构（由国家认可机构认可并名列欧盟 CBAM 登记处，依据 Delegated Reg (EU) 2025/2551）审查档案并出具签署的核查声明——进口商的申报正是以该声明为依据。「标记为已核实」记录的正是这一行为，且任何人都可用「核查数据包文件」离线重新验证签名。",
     packVerifyPending: "待核查", reviewVerifyBtn: "标记为已核实", toastVerifiedPack: "核查人已核实该数据包。", verifyStatus: "核实状态",
     roleTitle: "您是谁？", roleSub: "Kaimeter 根据您的角色呈现对应的工作流程。您可以随时通过顶栏的角色按钮更改。",
     roleImporter: "进口商/申报人", roleImporterDesc: "记录进口货物、盯住 50 吨红线、测算证书账单、准备申报。",
@@ -794,6 +822,8 @@ const SEED = 75.36; // first published CBAM certificate price, 2026-04-07
 let cons = JSON.parse(localStorage.getItem("kaimeter.cons") || "[]");
 let ets = JSON.parse(localStorage.getItem("kaimeter.ets") || JSON.stringify({ value: SEED, date: "2026-04-07" }));
 let year = 2026;
+// The record the wizard just saved — consumed by the next dropdown render.
+let justSavedId = null;
 
 // Sample CN codes (8-digit) — the full catalog seeds from the Commission
 // workbook when the core lands.
@@ -807,6 +837,31 @@ const CN = {
   "28041000": { d: ["Hydrogen", "氢"], s: "hydrogen" },
 };
 const SECTORS = { steel: ["Iron & steel", "钢铁"], aluminium: ["Aluminium", "铝"], cement: ["Cement", "水泥"], fertilisers: ["Fertilisers", "化肥"], electricity: ["Electricity", "电力"], hydrogen: ["Hydrogen", "氢"] };
+// Origin/production countries as dropdowns (demo feedback): ISO code in the
+// data, localized label on screen. China first — the launch trade route —
+// then alphabetical.
+const COUNTRIES = [
+  ["CN", "China", "中国"],
+  ["AR", "Argentina", "阿根廷"], ["AT", "Austria", "奥地利"], ["AU", "Australia", "澳大利亚"],
+  ["BE", "Belgium", "比利时"], ["BR", "Brazil", "巴西"], ["BG", "Bulgaria", "保加利亚"],
+  ["CA", "Canada", "加拿大"], ["HR", "Croatia", "克罗地亚"], ["CZ", "Czechia", "捷克"],
+  ["DK", "Denmark", "丹麦"], ["EG", "Egypt", "埃及"], ["FI", "Finland", "芬兰"],
+  ["FR", "France", "法国"], ["DE", "Germany", "德国"], ["GR", "Greece", "希腊"],
+  ["HU", "Hungary", "匈牙利"], ["IN", "India", "印度"], ["ID", "Indonesia", "印度尼西亚"],
+  ["IE", "Ireland", "爱尔兰"], ["IT", "Italy", "意大利"], ["JP", "Japan", "日本"],
+  ["KZ", "Kazakhstan", "哈萨克斯坦"], ["KR", "South Korea", "韩国"], ["MX", "Mexico", "墨西哥"],
+  ["MY", "Malaysia", "马来西亚"], ["NL", "Netherlands", "荷兰"], ["NZ", "New Zealand", "新西兰"],
+  ["NG", "Nigeria", "尼日利亚"], ["NO", "Norway", "挪威"], ["PH", "Philippines", "菲律宾"],
+  ["PL", "Poland", "波兰"], ["PT", "Portugal", "葡萄牙"], ["RO", "Romania", "罗马尼亚"],
+  ["SA", "Saudi Arabia", "沙特阿拉伯"], ["SG", "Singapore", "新加坡"], ["SK", "Slovakia", "斯洛伐克"],
+  ["SI", "Slovenia", "斯洛文尼亚"], ["ZA", "South Africa", "南非"], ["ES", "Spain", "西班牙"],
+  ["SE", "Sweden", "瑞典"], ["CH", "Switzerland", "瑞士"], ["TH", "Thailand", "泰国"],
+  ["TR", "Türkiye", "土耳其"], ["UA", "Ukraine", "乌克兰"], ["AE", "United Arab Emirates", "阿联酋"],
+  ["GB", "United Kingdom", "英国"], ["US", "United States", "美国"], ["VN", "Vietnam", "越南"],
+];
+const countryOption = c => lang === "zh" ? c[2] : c[1];
+const countryOptions = v => `<option value="" ${!v ? "selected" : ""}>—</option>` +
+  COUNTRIES.map(c => `<option value="${c[0]}" ${v === c[0] ? "selected" : ""}>${esc(countryOption(c))} (${c[0]})</option>`).join("");
 // R1: electricity and hydrogen get no 50-tonne exemption — they never count
 // toward the line and are liable regardless.
 const ALWAYS_LIABLE = new Set(["electricity", "hydrogen"]);
@@ -959,7 +1014,9 @@ let wiz = null; // {mode, step, docs:{energy:[rec],materials:[],production:[]}, 
 // doc record: {name, parsed, fields:{...}}
 function openWizard() {
   const mode = role === "importer" ? "consignment" : "pack";
-  wiz = { mode, step: 1, docs: { energy: [], materials: [], production: [] }, f: {}, verified: {}, draft: {}, prefill: {} };
+  // Carbon price already paid defaults to 0 — the common case for CN exports —
+  // but the field is required: clearing it blocks Next until 0 is restated.
+  wiz = { mode, step: 1, docs: { energy: [], materials: [], production: [] }, f: {}, verified: {}, draft: { carbonPricePaid: "0" }, prefill: {} };
   renderWizard();
   $("#wizBg").classList.add("open");
 }
@@ -1012,6 +1069,26 @@ function renderWizard() {
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
+// Extracted fields are confirmed where they are read — at attach time — not
+// at the end of the wizard (demo feedback): the human sees exactly what the
+// parse produced while the file is fresh, edits any value, and ticks each
+// one. The key format ("ext:tag:idx:field") matches removeDoc's reset logic.
+const EXT_TAGS = { energy: "e", production: "p" };
+function extKey(cls, i, f) { return "ext:" + EXT_TAGS[cls] + ":" + i + ":" + f; }
+function extConfirmed() {
+  return Object.keys(EXT_TAGS).every(cls =>
+    (wiz.docs[cls] || []).every((rec, i) =>
+      !rec.parsed || Object.keys(rec.fields).every(f => wiz.verified[extKey(cls, i, f)])));
+}
+function onExtField(cls, i, f, v) { wiz.docs[cls][i].fields[f] = v; }
+// Chip hover (demo feedback): the file's contents and everything the parse
+// extracted, in one place — nothing is hidden behind a later step.
+function chipTip(r) {
+  if (!r.parsed) return t("noStructured");
+  const fields = Object.entries(r.fields).map(([k, v]) => extLabel(k) + ": " + v).join("\n");
+  return (r.raw ? r.raw + "\n————\n" : "") + fields;
+}
+
 function renderStep1(b) {
   const cls = [
     ["energy", "energyTitle", "energyHint"],
@@ -1023,12 +1100,23 @@ function renderStep1(b) {
     ${cls.map(([key, tt, hh]) => {
       const recs = wiz.docs[key] || [];
       const parsedCount = recs.filter(r => r.parsed).length;
+      const extRows = EXT_TAGS[key] ? recs.map((r, i) => !r.parsed ? "" :
+        Object.keys(r.fields).map(f => {
+          const k = extKey(key, i, f);
+          return `<div class="verify-row">
+            <span class="k">${esc(extLabel(f))} · ${esc(r.name)}</span>
+            <span class="lead"></span>
+            <input type="text" class="ext-edit" value="${esc(r.fields[f])}" aria-label="${esc(extLabel(f))}" oninput="onExtField('${key}',${i},'${f}',this.value)">
+            <input type="checkbox" ${wiz.verified[k] ? "checked" : ""} onchange="wiz.verified['${k}']=this.checked;updateNav()">
+          </div>`;
+        }).join("")).join("") : "";
       return `
       <div class="docclass">
         <h4>${t(tt)}</h4>
         <p class="hint">${t(hh)}</p>
-        <div class="chips">${recs.map((r, idx) => `<span class="chip">${esc(r.name)}${r.parsed ? " · ✓ " + Object.keys(r.fields).length : ""}<button type="button" title="${t("removeDoc")}" aria-label="${t("removeDoc")}: ${esc(r.name)}" onclick="removeDoc('${key}', ${idx})">×</button></span>`).join("") || `<span class="hint">${t("none")}</span>`}</div>
+        <div class="chips">${recs.map((r, idx) => `<span class="chip" data-tip="${esc(chipTip(r))}">${esc(r.name)}${r.parsed ? " · ✓ " + Object.keys(r.fields).length : ""}<button type="button" title="${t("removeDoc")}" aria-label="${t("removeDoc")}: ${esc(r.name)}" onclick="removeDoc('${key}', ${idx})">×</button></span>`).join("") || `<span class="hint">${t("none")}</span>`}</div>
         ${parsedCount ? `<p class="hint accent" style="margin-top:8px">${t("extFields").replace("{n}", parsedCount)}</p>` : ""}
+        ${extRows ? `<p class="hint" style="margin-top:10px">${t("confirmExtracts")}</p>${extRows}` : ""}
         <button class="btn ghost" style="margin-top:8px" onclick="pickFiles('${key}')">＋ ${t("addFiles")}</button>
         <input type="file" id="file-${key}" multiple onchange="onFiles('${key}', this)" accept="image/*,.pdf,.xml,.txt,.csv,.xlsx">
       </div>`;
@@ -1061,7 +1149,13 @@ function onFiles(k, input) {
     };
     if (/\.(txt|xml|csv|json)$/i.test(f.name)) {
       const r = new FileReader();
-      r.onload = () => { rec.fields = parseDocument(k, String(r.result)); rec.parsed = Object.keys(rec.fields).length >= 2; finish(); };
+      r.onload = () => {
+        const text = String(r.result);
+        rec.fields = parseDocument(k, text);
+        rec.parsed = Object.keys(rec.fields).length >= 2;
+        rec.raw = text.length > 1200 ? text.slice(0, 1200) + " …" : text;
+        finish();
+      };
       r.onerror = finish;
       r.readAsText(f);
     } else finish();
@@ -1073,15 +1167,15 @@ function renderStep2(b) {
   b.innerHTML = `
     <p class="sub" style="margin-bottom:14px">${t("step2Hint")}</p>
     <div class="frow">
-      <div class="fgroup"><label>${t("cnCode")}</label>
+      <div class="fgroup"><label>${t("cnCode")} <span class="tip" data-tipkey="tipCn" tabindex="0">?</span></label>
         <select id="f-cnCode" onchange="onField('cnCode', this.value)">${[""].concat(Object.keys(CN)).map(c => `<option value="${c}" ${f.cnCode === c ? "selected" : ""}>${c ? c + " — " + CN[c].d[lang === "zh" ? 1 : 0] : "—"}</option>`).join("")}</select>
         <p class="hint" style="margin-top:6px">${t("sampleCodes")}</p></div>
       <div class="fgroup"><label>${t("netMass")}</label><input type="number" id="f-netMassKg" min="0" step="1" value="${f.netMassKg || ""}" oninput="onField('netMassKg', this.value)"></div>
     </div>
     ${(wiz.prefill && (wiz.prefill.cnCode || wiz.prefill.netMassKg)) ? `<p class="hint accent" style="margin:0 0 14px">${t("prefillNote").replace("{f}", esc(wiz.prefill.cnCode || wiz.prefill.netMassKg))}</p>` : ""}
     <div class="frow">
-      <div class="fgroup"><label>${t("origin")}</label><input type="text" id="f-origin" value="${f.origin || ""}" oninput="onField('origin', this.value)"></div>
-      <div class="fgroup"><label>${t("prodCountry")}</label><input type="text" id="f-prodCountry" value="${f.prodCountry || ""}" oninput="onField('prodCountry', this.value)"></div>
+      <div class="fgroup"><label>${t("origin")}</label><select id="f-origin" onchange="onField('origin', this.value)">${countryOptions(f.origin)}</select></div>
+      <div class="fgroup"><label>${t("prodCountry")}</label><select id="f-prodCountry" onchange="onField('prodCountry', this.value)">${countryOptions(f.prodCountry)}</select></div>
     </div>
     <div class="frow">
       <div class="fgroup"><label>${t("installation")}</label><input type="text" id="f-installation" value="${f.installation || ""}" oninput="onField('installation', this.value)"></div>
@@ -1094,11 +1188,12 @@ function renderStep2(b) {
       </div>
       <p class="hint" style="margin-top:8px">${f.basis === "actual" ? t("basisActualHint") : t("basisDefaultHint")}</p>
     </div>
-    <div class="fgroup"><label>${t("emissionsPerT")}</label><input type="number" id="f-emissionsPerT" min="0" step="0.001" value="${f.emissionsPerT || ""}" oninput="onField('emissionsPerT', this.value)"></div>
+    <div class="fgroup"><label>${t("emissionsPerT")} <span class="tip" data-tipkey="tipEmissions" tabindex="0">?</span></label><input type="number" id="f-emissionsPerT" min="0" step="0.001" value="${f.emissionsPerT || ""}" oninput="onField('emissionsPerT', this.value)"></div>
     ${f.basis === "actual" ? (wiz.mode === "consignment"
       ? `<div class="verify-row"><span class="k">${t("verifierCheck")}</span><span class="lead"></span><input type="checkbox" ${f.verifierChecked ? "checked" : ""} onchange="onField('verifierChecked', this.checked);renderWizard()"></div>`
       : `<p class="hint" style="margin-top:6px">${t("verifyLaterHint")}</p>`) : ""}
-    <div class="fgroup"><label>${t("carbonPaid")}</label><input type="number" id="f-carbonPricePaid" min="0" step="0.01" value="${f.carbonPricePaid || ""}" oninput="onField('carbonPricePaid', this.value)"></div>
+    <div class="fgroup"><label>${t("carbonPaid")}</label><input type="number" id="f-carbonPricePaid" min="0" step="0.01" value="${f.carbonPricePaid || ""}" oninput="onField('carbonPricePaid', this.value)">
+      ${(!f.carbonPricePaid && f.carbonPricePaid !== "0") ? `<p class="hint accent" style="margin-top:6px">${t("carbonPaidReq")}</p>` : ""}</div>
     ${mathPanelHtml()}`;
   renderLiveMath();
 }
@@ -1114,22 +1209,27 @@ function mathPanelHtml() {
       <h3>${t("step3Title")} <span class="tip" data-tipkey="tipExposure" tabindex="0">?</span></h3>
       <p class="hint" style="margin:4px 0 10px">${t("step3Hint")}</p>
       <div id="liveMathBody"></div>
-      <details style="margin-top:10px">
-        <summary class="hint" style="cursor:pointer">${t("schedDetails")}</summary>
-        <div class="sheet" style="margin-top:8px">
-          <h3>${t("markupSchedule")}</h3>
-          ${line(t("year2026"), (1 + MARKUP_PCT.y2026 / 100).toFixed(2) + "×")}
-          ${line(t("year2027"), (1 + MARKUP_PCT.y2027 / 100).toFixed(2) + "×")}
-          ${line(t("year2028"), (1 + MARKUP_PCT.y2028plus / 100).toFixed(2) + "×")}
-          ${line(t("fert"), (1 + MARKUP_PCT.fertilisers / 100).toFixed(2) + "×")}
-        </div>
-        <div class="sheet">
-          <h3>${t("factorSchedule")}</h3>
-          ${Object.entries(CBAM_FACTOR_PCT).map(([y, p]) => line(y, p + "%")).join("")}
-          ${line("2034+", "100%")}
-        </div>
-      </details>
     </div>`;
+}
+// The reference schedules live in the What-is-CBAM guide (demo feedback):
+// the math panel computes; the guide carries the statutory tables.
+function schedHtml() {
+  return `
+    <details style="margin-top:12px">
+      <summary class="hint" style="cursor:pointer">${t("schedDetails")}</summary>
+      <div class="sheet" style="margin-top:8px">
+        <h3>${t("markupSchedule")}</h3>
+        ${line(t("year2026"), (1 + MARKUP_PCT.y2026 / 100).toFixed(2) + "×")}
+        ${line(t("year2027"), (1 + MARKUP_PCT.y2027 / 100).toFixed(2) + "×")}
+        ${line(t("year2028"), (1 + MARKUP_PCT.y2028plus / 100).toFixed(2) + "×")}
+        ${line(t("fert"), (1 + MARKUP_PCT.fertilisers / 100).toFixed(2) + "×")}
+      </div>
+      <div class="sheet">
+        <h3>${t("factorSchedule")}</h3>
+        ${Object.entries(CBAM_FACTOR_PCT).map(([y, p]) => line(y, p + "%")).join("")}
+        ${line("2034+", "100%")}
+      </div>
+    </details>`;
 }
 function renderLiveMath() {
   const body = document.getElementById("liveMathBody");
@@ -1137,15 +1237,28 @@ function renderLiveMath() {
   const c = computeDraft();
   const showMu = c.unverified && c.mu !== null && c.mu > 0;
   const netVal = c.net === null ? c.gross : c.net;
+  // A receipt, not a summary (demo feedback): every multiplication the bill
+  // is made of, in order, with its intermediate result on its own line.
+  const price = ets.value || 0;
+  const rawEm = c.tMass * c.perT;
+  const payable = c.factorPct === null ? null : c.totalEm * (c.factorPct / 100);
+  const cost = (payable === null ? c.totalEm : payable) * price;
+  const paid = parseFloat(wiz.draft.carbonPricePaid) || 0;
+  const t2 = n => n.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   body.innerHTML = `
-    ${line(t("massT"), c.tMass.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " t")}
+    ${line(t("massT"), t2(c.tMass) + " t")}
     ${line(t("basisLbl"), c.basis === "actual" ? t("actual") + (!c.unverified ? " · " + t("verified") : "") : t("dflt"))}
-    ${showMu ? line(t("markUp") + " (" + c.y + ")" + (c.basis === "actual" ? " · " + t("markupUntil") : ""), "+" + c.mu + "%", "warn") : ""}
-    ${line(t("emissionsTotal"), fmt2(c.totalEm) + " tCO₂e")}
-    ${c.factorPct !== null ? line(t("factorLbl") + " (" + c.y + ")", c.factorPct + "%") : ""}
-    ${line(t("grossLbl"), "€" + fmt2(c.gross))}
-    ${line(t("netLbl"), "€" + fmt2(netVal), "total grand")}
-    ${(wiz.mode === "pack" && c.basis === "actual" && c.unverified && showMu) ? line(t("onceVerified"), "€" + fmt2(c.netVerified), "good") : ""}
+    ${line("× " + t("emissionsPerT"), t2(c.perT) + " tCO₂e/t")}
+    ${line("= " + t("emissionsTotal"), t2(rawEm) + " tCO₂e")}
+    ${showMu ? line("+ " + t("markUp") + " (" + c.y + ")" + (c.basis === "actual" ? " · " + t("markupUntil") : ""), "+" + c.mu + "%", "warn") : ""}
+    ${showMu ? line("= " + t("emissionsAfterMarkup"), t2(c.totalEm) + " tCO₂e") : ""}
+    ${c.factorPct !== null ? line("× " + t("factorLbl") + " (" + c.y + ")", c.factorPct + "%") : ""}
+    ${payable !== null ? line("= " + t("payableEm"), t2(payable) + " tCO₂e") : ""}
+    ${line("× " + t("etsCached"), "€" + t2(price) + " / tCO₂e")}
+    ${line("= " + t("certCost"), "€" + t2(cost))}
+    ${line("− " + t("minusPaid"), "€" + t2(paid))}
+    ${line(t("netLbl"), "€" + t2(netVal), "total grand")}
+    ${(wiz.mode === "pack" && c.basis === "actual" && c.unverified && showMu) ? line(t("onceVerified"), "€" + t2(c.netVerified), "good") : ""}
     <div class="formula">${t("formulaNet")}</div>
     ${wiz.mode === "pack" ? `<p class="note">${t("packBuyerNote")}</p>` : ""}
     ${packWorthLine(c)}`;
@@ -1165,16 +1278,10 @@ function packWorthLine(c) {
 }
 
 function verifyKeys() {
-  const base = ["cnCode", "netMassKg", "origin", "prodCountry", "installation", "importDate", "basis", "emissionsPerT", "carbonPricePaid"];
-  // Extracted fields from BOTH parsed classes become verification rows:
-  // invoice fields from energy bills, output/CN-code fields from production
-  // statements — the human verifies each against its attachment (R16/R23).
-  [["energy", "e"], ["production", "p"]].forEach(([cls, tag]) => {
-    (wiz.docs[cls] || []).forEach((rec, i) => {
-      if (rec.parsed) Object.keys(rec.fields).forEach(f => base.push("ext:" + tag + ":" + i + ":" + f));
-    });
-  });
-  return base;
+  // The 9 record fields are verified on the final step. Extracted document
+  // fields are no longer here: they are confirmed (and editable) at attach
+  // time on step 1 — where the file is fresh (demo feedback).
+  return ["cnCode", "netMassKg", "origin", "prodCountry", "installation", "importDate", "basis", "emissionsPerT", "carbonPricePaid"];
 }
 
 function renderStep4(b) {
@@ -1190,16 +1297,6 @@ function renderStep4(b) {
     ["emissionsPerT", t("emissionsPerT"), f.emissionsPerT || "—"],
     ["carbonPricePaid", t("carbonPaid"), f.carbonPricePaid || "—"],
   ];
-  // Extracted e-fapiao and production-log fields are candidates too — the
-  // human verifies each against the attachment before anything is saved (R16).
-  [["energy", "e"], ["production", "p"]].forEach(([cls, tag]) => {
-    (wiz.docs[cls] || []).forEach((rec, i) => {
-      if (!rec.parsed) return;
-      Object.entries(rec.fields).forEach(([k, v]) => {
-        rows.push(["ext:" + tag + ":" + i + ":" + k, extLabel(k) + " · " + rec.name, v]);
-      });
-    });
-  });
   b.innerHTML = `
     <p class="sub">${t("step4Hint")}</p>
     ${rows.map(([k, lbl, v]) => `
@@ -1218,8 +1315,8 @@ function updateNav() {
   const S = wiz ? wiz.step : 0;
   const btn = $("#wizNext");
   if (!btn) return;
-  if (S === 1) btn.disabled = false;
-  else if (S === 2) btn.disabled = !(wiz.draft.cnCode && wiz.draft.netMassKg && wiz.draft.importDate);
+  if (S === 1) btn.disabled = !extConfirmed();
+  else if (S === 2) btn.disabled = !(wiz.draft.cnCode && wiz.draft.netMassKg && wiz.draft.importDate && wiz.draft.carbonPricePaid);
   else btn.disabled = !verifyKeys().every(k => wiz.verified[k]);
 }
 $("#wizNext").addEventListener("click", () => {
@@ -1228,7 +1325,7 @@ $("#wizNext").addEventListener("click", () => {
   else {
     if (!verifyKeys().every(k => wiz.verified[k])) { toast(t("toastNeedAll")); return; }
     const c = computeDraft();
-    cons.push({
+    const saved = {
       id: "c" + Date.now(),
       kind: wiz.mode,
       cnCode: wiz.draft.cnCode,
@@ -1243,7 +1340,11 @@ $("#wizNext").addEventListener("click", () => {
       totalEm: c.totalEm, factorPct: c.factorPct, gross: c.gross, net: c.net,
       createdAt: new Date().toISOString(),
       status: wiz.mode === "pack" ? "pending" : "verified",
-    });
+    };
+    cons.push(saved);
+    // Demo feedback: the record just created is the one the user wants to
+    // see — select it in the dropdown of the screen they land on.
+    justSavedId = saved.id;
     saveCons(); closeWizard(); renderAll(); showView(role === "importer" ? "consignments" : "packs");
     toast(t("toastSaved"));
   }
@@ -1372,8 +1473,10 @@ function renderPacks() {
   const packs = cons.filter(isPack);
   const sel = $("#packSel");
   // Same selection-preservation rule as the export dropdown: rebuilding
-  // options resets the select, so capture the pick first and restore it.
-  const wanted = sel.value;
+  // options resets the select, so capture the pick first and restore it —
+  // unless a record was just saved, which then takes precedence.
+  const wanted = justSavedId && packs.some(x => x.id === justSavedId) ? justSavedId : sel.value;
+  justSavedId = null;
   sel.innerHTML = packs.length ? packs.slice().reverse().map(c => {
     const { name } = consRow(c);
     return `<option value="${c.id}">${esc(c.cnCode)} — ${esc(name)} — ${kgToT(c.netMassKg).toLocaleString("en", { maximumFractionDigits: 1 })} t — ${esc(c.importDate)}</option>`;
@@ -1504,6 +1607,7 @@ function onPackFile(input) {
 
 function renderReview() {
   $("#reviewNote").textContent = t("reviewNote");
+  $("#verifyHowNote").textContent = t("verifyHow");
   const rows = cons.filter(isPack);
   const tb = $("#reviewTable");
   tb.innerHTML = rows.length ? rows.slice().reverse().map(c => {
@@ -1544,8 +1648,10 @@ function renderExport() {
   const sel = $("#exportSel");
   const rows = cons.filter(isCons);
   // Rebuilding the options resets the select to its first entry — capture
-  // the user's pick first and restore it, or every change snaps back.
-  const wanted = sel.value;
+  // the user's pick first and restore it, or every change snaps back. A
+  // just-saved record wins, so the new consignment is the shown context.
+  const wanted = justSavedId && rows.some(x => x.id === justSavedId) ? justSavedId : sel.value;
+  justSavedId = null;
   sel.innerHTML = rows.length ? rows.slice().reverse().map(c => {
     const { name } = consRow(c);
     return `<option value="${c.id}">${esc(c.cnCode)} — ${esc(name)} — ${kgToT(c.netMassKg).toLocaleString("en", { maximumFractionDigits: 1 })} t — ${esc(c.importDate)}</option>`;
@@ -1606,6 +1712,9 @@ function resolveTips() {
 function renderAll() {
   document.title = t("docTitle");
   $("#roleName").innerHTML = role ? `<span class="rname">${t(roleKey(role))}</span>` : "·";
+  // The guide's reference schedules re-render with the dictionaries.
+  const ps = $("#primerSched");
+  if (ps) ps.innerHTML = schedHtml();
   // Language picker: one option per available dictionary, named natively —
   // adding a locale to L adds it to the picker (README i18n roadmap).
   const langSel = $("#langSel");
