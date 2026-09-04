@@ -155,7 +155,11 @@ plan and how to contribute one.
 Kaimeter maintains localized UI strings, exports, and regulatory terminology
 via key-value JSON dictionaries stored in the `/locales` directory.
 Standardized translation keys ensure strict semantic parity across all
-supported languages for manufacturers, traders, and importers.
+supported languages for manufacturers, traders, and importers. The locale
+assets for the supported languages are embedded in the executable at
+compile time, so the single-file binary works out of the box; a `locales`
+directory next to it (or `KAIMETER_LOCALES_DIR`) overrides the embedded
+strings without a rebuild.
 
 | Language            | Code    | Status      | File                                       |
 | ------------------- | ------- | ----------- | ------------------------------------------ |

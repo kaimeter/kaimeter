@@ -10,7 +10,7 @@ soil, PCI-DSS processor). No telemetry of document or consignment data.
 One file copy, no runtime install:
 
 ```sh
-./kaimeter-core                 # serves http://127.0.0.1:8080
+./kaimeter                      # serves http://127.0.0.1:8080
 ```
 
 Or as a hardened service:
@@ -25,7 +25,7 @@ binary):
 
 ```sh
 docker build -t kaimeter .
-docker run -v "$PWD/data:/app/data" -p 127.0.0.1:8080:8080 kaimeter
+docker run -v "$PWD/data:/data" -p 127.0.0.1:8080:8080 kaimeter
 ```
 
 On-premises in the mainland works the same way — no ICP filing required
@@ -33,9 +33,11 @@ because nothing is hosted.
 
 Configuration (env or `kaimeter.toml`): `KAIMETER_ADDR`
 (default `127.0.0.1:8080`), `KAIMETER_DATA_DIR` (default `./data`),
-`KAIMETER_LOCALES_DIR` (default `./locales`). Keep the address loopback
-unless you front it with TLS — server-exposure mode (LAN/internet) is a
-post-1.0.0 capability (R20).
+`KAIMETER_LOCALES_DIR` (default `./locales`). Locale assets are embedded
+in the binary; a locales directory is only needed to override them, and a
+directory that exists but is incomplete refuses to start. Keep the address
+loopback unless you front it with TLS — server-exposure mode
+(LAN/internet) is a post-1.0.0 capability (R20).
 
 ## Lane 2 — Kaimeter-managed, customer's chosen region
 

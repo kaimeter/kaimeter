@@ -65,9 +65,10 @@ pub async fn bootstrap(cfg: &Config) -> anyhow::Result<AppState> {
         .context("run database migrations")?;
     tracing::info!(path = %db_path.display(), version = storage.schema_version().unwrap_or(0), "database ready");
 
-    let i18n = I18n::load(&cfg.locales_dir)
+    let (i18n, source) = I18n::load_or_embedded(&cfg.locales_dir)
         .map_err(|e| anyhow::anyhow!(e))
         .with_context(|| format!("load locales from {}", cfg.locales_dir.display()))?;
+    tracing::info!(source = %source, dir = %cfg.locales_dir.display(), "locales loaded");
     for code in i18n.locale_codes() {
         tracing::info!(locale = %code, welcome = %i18n.t_or_en(&code, "welcome"), "locale loaded");
     }
@@ -174,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn bootstrap_fails_when_locales_missing() {
+    fn bootstrap_falls_back_to_embedded_locales_when_dir_absent() {
         let root = scratch("nolocales");
         std::fs::create_dir_all(&root).unwrap();
         let cfg = Config {
@@ -183,6 +184,34 @@ mod tests {
             locales_dir: root.join("no-such-locales"),
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
+        // The directory is absent: bootstrap proceeds on the compiled-in
+        // locale assets — the single-file deployment path.
+        let state = rt.block_on(bootstrap(&cfg)).expect("bootstrap");
+        assert_eq!(
+            state.i18n().t("en", "welcome").unwrap(),
+            "Welcome to Kaimeter"
+        );
+        assert_eq!(
+            state.i18n().t("zh-CN", "welcome").unwrap(),
+            "欢迎使用 Kaimeter"
+        );
+    }
+
+    #[test]
+    fn bootstrap_fails_when_locales_dir_exists_but_is_incomplete() {
+        let root = scratch("brokelocales");
+        std::fs::create_dir_all(&root).unwrap();
+        let locales = root.join("locales");
+        std::fs::create_dir_all(&locales).unwrap();
+        std::fs::write(locales.join("en.json"), r#"{"welcome":"hi"}"#).unwrap();
+        let cfg = Config {
+            addr: "127.0.0.1:0".to_string(),
+            data_dir: root.join("data"),
+            locales_dir: locales,
+        };
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        // The directory exists but is incomplete: configured locales are
+        // strictly validated, never silently replaced by embedded assets.
         assert!(rt.block_on(bootstrap(&cfg)).is_err());
     }
 }

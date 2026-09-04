@@ -10,14 +10,17 @@ WORKDIR /build
 COPY Cargo.toml ./
 COPY src ./src
 COPY migrations ./migrations
-# Locale assets are embedded? No — loaded at runtime; not needed at build time.
+# Locale JSON assets are embedded into the binary at compile time
+# (include_str!), so they must be present at build time — but they do
+# not ship in the runtime image.
+COPY locales ./locales
 
 RUN cargo build --release
 
 # ---- Stage 2: runtime --------------------------------------------------------
 FROM scratch
 # The binary is the product. Copy the exact same release binary.
-COPY --from=build /build/target/release/kaimeter-core /kaimeter
+COPY --from=build /build/target/release/kaimeter /kaimeter
 
 # No shell, no package manager, nothing else.
 ENTRYPOINT ["/kaimeter"]
