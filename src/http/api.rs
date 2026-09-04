@@ -21,6 +21,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use base64::Engine as _;
+use rand_core::RngCore as _;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -34,8 +35,9 @@ use crate::domain::errors::DomainError;
 use crate::domain::lookup::Lookup;
 use crate::domain::types::Consignment;
 use crate::export::{
-    apply_masks, build_declaration, preflight_validate, preview, DeclarationField, FieldMask,
-    SchemaEntry, REQUIRED_DECLARATION_FIELDS,
+    apply_masks, build_declaration, merkle_root, preflight_validate, preview, seal_pack, to_vc_jwt,
+    to_vp_json_ld, verify_vp_json_ld, DeclarationField, FieldMask, PackContent, SchemaEntry,
+    REQUIRED_DECLARATION_FIELDS,
 };
 use crate::math::{
     cbam_factor, consignment_emissions_default, gross_exposure, net_exposure, DeMinimisTracker,
@@ -77,6 +79,8 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_role),
         )
         .route("/export/declaration", post(export_declaration))
+        .route("/pack/seal", post(seal_pack_api))
+        .route("/pack/verify", post(verify_pack_api))
         .route("/audit", get(audit_api))
         .route("/attachments", post(create_attachment))
         .route("/price", get(get_price_api).put(put_price))
@@ -986,6 +990,195 @@ async fn export_declaration(State(state): State<AppState>, body: Bytes) -> ApiRe
         })),
     )
         .into_response())
+}
+
+// ---------------------------------------------------------------------------
+// Sealed data packs (R21): Ed25519-sealed W3C Verifiable Presentations
+// ---------------------------------------------------------------------------
+
+/// Settings key holding the local pack-signing key (Ed25519 seed, hex).
+/// Generated once on this machine; the signer identity in the pack is
+/// `did:key:<public_key_hex>` derived from it — no central registration
+/// (R21). Vault-sealed key storage is a tracked 1.0 hardening item; the demo
+/// ships the seed in the local SQLite settings table.
+const PACK_SIGNING_KEY_SETTING: &str = "pack_signing_key";
+
+/// The local Ed25519 pack-signing key: read from settings, generated on
+/// first use and persisted for every later seal (the same key must sign a
+/// mill's packs, or verifiers see a different identity each export).
+///
+/// # Errors
+///
+/// [`DomainError::Storage`] on backend failure; [`DomainError::CryptoError`]
+/// when the stored seed is malformed (a corrupted setting is never silently
+/// replaced — the user must fix or delete it explicitly).
+fn pack_signing_key(storage: &dyn Storage) -> Result<ed25519_dalek::SigningKey, ApiError> {
+    match store::get_setting(storage, PACK_SIGNING_KEY_SETTING).map_err(ApiError::from)? {
+        Some(hex_seed) => {
+            let bytes = hex::decode(hex_seed.trim()).map_err(|e| {
+                ApiError::from(DomainError::CryptoError(format!(
+                    "pack signing key is not hex: {e}"
+                )))
+            })?;
+            let seed: [u8; 32] = bytes.try_into().map_err(|malformed: Vec<u8>| {
+                ApiError::from(DomainError::CryptoError(format!(
+                    "pack signing key must be 32 bytes, got {}",
+                    malformed.len()
+                )))
+            })?;
+            Ok(ed25519_dalek::SigningKey::from_bytes(&seed))
+        }
+        None => {
+            let mut seed = [0u8; 32];
+            rand_core::OsRng.fill_bytes(&mut seed);
+            let key = ed25519_dalek::SigningKey::from_bytes(&seed);
+            store::set_setting(storage, PACK_SIGNING_KEY_SETTING, &hex::encode(seed))
+                .map_err(ApiError::from)?;
+            Ok(key)
+        }
+    }
+}
+
+/// The pack-sealing request body: the compliance fields plus the evidence
+/// leaf descriptors the Merkle root commits to (production-document names and
+/// the sealed field values — descriptors only; the documents themselves stay
+/// on the mill's machine, R16/R21).
+#[derive(Deserialize)]
+struct PackSealBody {
+    installation_ref: String,
+    cn_code: String,
+    emission_factor_tco2e_per_t: f64,
+    embedded_emissions_tco2e: f64,
+    #[serde(default)]
+    evidence_leaves: Vec<String>,
+    valid_until_iso: Option<String>,
+}
+
+/// `POST /api/pack/seal` — build and seal a data pack (R21): Merkle root
+/// over the evidence leaves, Ed25519 signature over the canonical content,
+/// serialized as a W3C Verifiable Presentation (JSON-LD) with a VC-JWT
+/// twin. The mill's key is the local device key (`did:key:<hex>`); nothing
+/// but the VP ever leaves for the buyer.
+///
+/// Fails closed on malformed compliance fields (CN format, negative values,
+/// empty installation ref) — an unsealable pack never ships.
+async fn seal_pack_api(State(state): State<AppState>, body: Bytes) -> ApiResult {
+    let body: PackSealBody = parse_body(&body)?;
+    let storage: &dyn Storage = state.storage().as_ref();
+
+    let cn = body.cn_code.trim();
+    if cn.len() != 8 || !cn.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(ApiError::from(DomainError::InvalidCnCode(
+            body.cn_code.clone(),
+        )));
+    }
+    if !(body.emission_factor_tco2e_per_t.is_finite() && body.emission_factor_tco2e_per_t >= 0.0) {
+        return Err(ApiError::from(DomainError::NegativeEnergy(
+            body.emission_factor_tco2e_per_t,
+        )));
+    }
+    if !(body.embedded_emissions_tco2e.is_finite() && body.embedded_emissions_tco2e >= 0.0) {
+        return Err(ApiError::from(DomainError::NegativeEnergy(
+            body.embedded_emissions_tco2e,
+        )));
+    }
+    let installation_ref = body.installation_ref.trim();
+    if installation_ref.is_empty() {
+        return Err(ApiError::from(DomainError::MissingRequiredField(
+            "installation_ref".to_string(),
+        )));
+    }
+
+    let leaves: Vec<String> = body
+        .evidence_leaves
+        .iter()
+        .map(|leaf| leaf.trim().to_string())
+        .filter(|leaf| !leaf.is_empty())
+        .collect();
+    let content = PackContent {
+        installation_ref: installation_ref.to_string(),
+        cn_code: cn.to_string(),
+        emission_factor_tco2e_per_t: body.emission_factor_tco2e_per_t,
+        embedded_emissions_tco2e: body.embedded_emissions_tco2e,
+        production_log_merkle_root: merkle_root(&leaves),
+        issued_iso: now_iso_utc()[..10].to_string(),
+        valid_until_iso: body
+            .valid_until_iso
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string),
+    };
+
+    let signing_key = pack_signing_key(storage)?;
+    let sealed = seal_pack(content, &signing_key).map_err(ApiError::from)?;
+    let did = format!("did:key:{}", sealed.public_key_hex);
+    let vp = to_vp_json_ld(&sealed);
+    let vc_jwt = to_vc_jwt(&sealed).map_err(ApiError::from)?;
+
+    let payload = serde_json::to_string(&sealed.content)
+        .map_err(|e| ApiError::bad_request("api.error.invalid_json", e.to_string()))?;
+    audit(
+        storage,
+        "pack.sealed",
+        &format!("pack:{installation_ref}:{cn}"),
+        &payload,
+    )
+    .map_err(ApiError::from)?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "pack": sealed,
+            "vp": vp,
+            "vc_jwt": vc_jwt,
+            "did": did,
+        })),
+    )
+        .into_response())
+}
+
+/// The pack-verification request body: a Verifiable Presentation exactly as
+/// exported (the verifier's copy of the core never sees anything else).
+#[derive(Deserialize)]
+struct PackVerifyBody {
+    vp: Value,
+}
+
+/// `POST /api/pack/verify` — offline verification of a sealed pack (R21/R28):
+/// the Ed25519 proof is checked against the key embedded in the VP itself —
+/// no Kaimeter server, no shared state. A tampered file is a FINDING, not a
+/// transport error: the response is always 200 with `valid` true/false so the
+/// wizard can render the verdict as data.
+async fn verify_pack_api(State(state): State<AppState>, body: Bytes) -> ApiResult {
+    let body: PackVerifyBody = parse_body(&body)?;
+    let storage: &dyn Storage = state.storage().as_ref();
+    match verify_vp_json_ld(&body.vp) {
+        Ok(content) => {
+            let payload = serde_json::to_string(&content)
+                .map_err(|e| ApiError::bad_request("api.error.invalid_json", e.to_string()))?;
+            audit(
+                storage,
+                "pack.verified",
+                &format!("pack:{}", content.cn_code),
+                &payload,
+            )
+            .map_err(ApiError::from)?;
+            Ok((
+                StatusCode::OK,
+                Json(json!({ "valid": true, "content": content })),
+            )
+                .into_response())
+        }
+        Err(err) => Ok((
+            StatusCode::OK,
+            Json(json!({
+                "valid": false,
+                "error": { "key": err.i18n_key(), "message": err.to_string() },
+            })),
+        )
+            .into_response()),
+    }
 }
 
 // ---------------------------------------------------------------------------

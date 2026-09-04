@@ -157,6 +157,11 @@ button.btn:disabled{background:var(--wash); color:var(--faint); cursor:not-allow
 .docclass .hint{font-size:12px; color:var(--gray); margin-bottom:8px}
 .chips{display:flex; flex-wrap:wrap; gap:6px}
 .chip{background:var(--wash); border:1px solid var(--rule); border-radius:2px; padding:3px 9px; font-size:12px}
+.chip button{
+  background:none; border:none; padding:0 0 0 6px; color:var(--faint);
+  font-family:inherit; font-size:13px; line-height:1; cursor:pointer;
+}
+.chip button:hover{color:var(--ink)}
 input[type=file]{display:none}
 
 .radio{display:flex; gap:14px}
@@ -335,6 +340,9 @@ body#lang-zh:target [data-lang="en"]{display:none!important}
   <p class="sub"><span data-lang="en">The exporter submits the dossier; you review the evidence and mark the pack verified. Nothing is edited here.</span><span data-lang="zh">出口商提交档案；您审查证据并将数据包标记为已核实。此处不编辑任何内容。</span></p>
   <div class="card">
     <p class="note" id="reviewNote" style="font-size:13px"></p>
+    <p style="margin-top:10px"><button class="btn ghost" onclick="pickPackFile()">✓ <span data-lang="en">Verify a pack file</span><span data-lang="zh">核查数据包文件</span></button>
+    <input type="file" id="packFile" accept=".json,.jsonld,application/json" style="display:none" onchange="onPackFile(this)"></p>
+    <p class="note" id="verifyResult" style="margin-top:6px"></p>
   </div>
   <table style="margin-top:18px">
     <thead><tr>
@@ -395,10 +403,10 @@ body#lang-zh:target [data-lang="en"]{display:none!important}
       <p class="note"><b><span data-lang="en">The EU importer pays — nobody outside the EU pays the EU directly.</span><span data-lang="zh">由欧盟进口商支付——欧盟以外的工厂和贸易公司不直接向欧盟付款。</span></b> <span data-lang="en">The importer buys CBAM certificates — one per tonne of embedded CO₂e, at the EU's carbon-market price — and files one annual declaration.</span><span data-lang="zh">进口商购买 CBAM 证书——每吨隐含 CO₂e 一张，价格按欧盟碳市场价格计算——并每年申报一次。</span></p>
       <p class="note"><b><span data-lang="en">The bill is computed from the mill's data.</span><span data-lang="zh">账单金额由工厂的数据决定。</span></b> <span data-lang="en">Without verified data from the producer, the importer must use Brussels' conservative default values plus a penalty mark-up: +10% in 2026, +20% in 2027, +30% from 2028. Unverified data is the expensive option.</span><span data-lang="zh">若没有生产商提供的经核实数据，进口商只能按欧盟从严设定的默认值加罚金加价计算：2026 年 +10%、2027 年 +20%、2028 年起 +30%。没有数据，就是最贵的选择。</span></p>
       <p class="note"><b><span data-lang="en">The charge is small now and grows every year.</span><span data-lang="zh">现在的费用很小，但逐年递增。</span></b> <span data-lang="en">Certificates go on sale February 1st, 2027; the first annual declaration is due September 30th, 2027; the payable share rises from 2.5% in 2026 to 100% by 2034.</span><span data-lang="zh">证书 2027 年 2 月 1 日开售；首次年度申报 2027 年 9 月 30 日截止；应缴份额从 2026 年的 2.5% 升至 2034 年的 100%。</span></p>
-      <p class="note"><b><span data-lang="en">Kaimeter is the data toolchain for that chain.</span><span data-lang="zh">Kaimeter 就是这条链条的数据工具。</span></b> <span data-lang="en">Mills produce verified data packs on their own machine — nothing leaves without approval; traders pass them through; importers file from them. Offline by construction.</span><span data-lang="zh">工厂在本机生成经核实的数据包——未经批准绝不外发；贸易公司负责传递；进口商据此申报。完全离线运行。</span></p>
+      <p class="note"><b><span data-lang="en">Kaimeter is the data toolchain for that chain.</span><span data-lang="zh">Kaimeter 就是这条链条的数据工具。</span></b> <span data-lang="en">Mills produce verified data packs on their own machine — nothing leaves without approval; traders pass them through; importers file from them. Every step runs on the user's own machine; no Kaimeter server participates at any point.</span><span data-lang="zh">工厂在本机生成经核实的数据包——未经批准绝不外发；贸易公司负责传递；进口商据此申报。每一步都运行在用户自己的机器上，全程没有任何 Kaimeter 服务器参与。</span></p>
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px">
         <button class="btn ghost" id="primerClose" style="display:none" onclick="closeRoleModal()"><span data-lang="en">Close</span><span data-lang="zh">关闭</span></button>
-        <button class="btn" id="primerNext" onclick="showWelcomeStep(3)"><span data-lang="en">Got it — who are you?</span><span data-lang="zh">明白了——您是谁？</span></button>
+        <button class="btn" id="primerNext" onclick="showWelcomeStep(3)"><span data-lang="en">Continue</span><span data-lang="zh">继续</span></button>
       </div>
     </div>
     <div id="wsRoles" style="display:none">
@@ -486,7 +494,13 @@ const L = {
     packWorthNote: "Estimate only — the buyer's bill also depends on the carbon price when they file and their Article 9 position. Commission defaults are conservative, so verified actuals usually save more than the mark-up alone.",
     packPreview: "Pack preview — fields that will leave this device",
     packNotIncluded: "Never included: supplier identity, prices, margins, internal notes.",
-    packSealedNote: "Demonstration pack. Cryptographic sealing (Merkle root + Verifiable Presentation) arrives in a later version.",
+    packSealedNote: "Exported from the served app, the pack is a signed W3C Verifiable Presentation (Ed25519) with a Merkle commitment to the production evidence — any later edit to a number breaks the signature, and the buyer verifies offline. From file:// it downloads as a plain demonstration JSON.",
+    markupUntil: "until the verifier signs", onceVerified: "Once verified",
+    removeDoc: "Remove",
+    prefillNote: "Prefilled from {f} — check against the source before saving.",
+    verifyOk: "Signature valid — pack intact",
+    verifyBad: "Signature invalid — the file was altered, or is not a Kaimeter pack",
+    verifyNeedsCore: "Offline verification needs the Kaimeter core — open the served app (not file://).",
     packRoleNoteExporter: "Attach the mill records, verify the fields, and hand your buyer a clean data pack: emissions per CN code — no pricing, no internal data. You approve every export.",
     packRoleNoteTrader: "Packs pass through you: aggregate suppliers, check each order, and give every buyer its own pack. Supplier identity and pricing stay masked.",
     reviewNote: "The exporter submits the dossier; you review the evidence and mark the pack verified; the buyer's declaration then relies on it. Verification is one-way — nothing here is edited.",
@@ -568,7 +582,13 @@ const L = {
     packWorthNote: "仅为估算——买家账单还取决于其申报时的碳价与第 9 条扣除情况。欧盟默认值从严设定，经核实的实际数据通常节省更多。",
     packPreview: "数据包预览——将离开本机的字段",
     packNotIncluded: "绝不包含：供应商身份、价格、利润、内部备注。",
-    packSealedNote: "演示数据包。密码学密封（Merkle 根 + 可验证呈报）将在后续版本提供。",
+    packSealedNote: "通过 Kaimeter 程序导出时，数据包为带 Ed25519 签名的 W3C 可验证呈报，并对生产证据作出 Merkle 承诺——导出后改动任何一个数字都会破坏签名，买家可离线校验。以 file:// 打开时下载的是纯文本演示 JSON。",
+    markupUntil: "核查人签核前适用", onceVerified: "核实后",
+    removeDoc: "移除",
+    prefillNote: "已从 {f} 预填——保存前请对照原件核实。",
+    verifyOk: "签名有效——数据包完整",
+    verifyBad: "签名无效——文件已被改动，或不是 Kaimeter 数据包",
+    verifyNeedsCore: "离线核验需要 Kaimeter 核心——请通过程序访问（而非 file://）。",
     packRoleNoteExporter: "添加工厂记录、核实字段，向买方交付干净的数据包：按 CN 编码的排放数据——不含价格与内部数据。每次导出都需您批准。",
     packRoleNoteTrader: "数据包经由您流转：汇总供应商、逐单核对，为每个买家提供各自的数据包。供应商身份与价格保持遮蔽。",
     reviewNote: "出口商提交档案；您审查证据并将数据包标记为已核实；买方的申报即以此为依据。核实为单向操作——此处不编辑任何内容。",
@@ -848,6 +868,10 @@ const EXT_L = {
   unit: ["Unit", "单位"], qty: ["Quantity", "数量"], unitPrice: ["Unit price", "单价"],
   amount: ["Amount", "金额"], taxRate: ["Tax rate", "税率"], taxAmount: ["Tax amount", "税额"],
   total: ["Total incl. tax", "价税合计"], seller: ["Seller", "销售方名称"],
+  millName: ["Company", "企业名称"], prodMonth: ["Production month", "生产月份"],
+  outputT: ["Output (t)", "产量（吨）"], netWeightKg: ["Net weight (kg)", "净重（千克）"],
+  elecKwh: ["Electricity (kWh)", "电力（千瓦时）"], gasM3: ["Natural gas (m³)", "天然气（立方米）"],
+  exportDate: ["Export date", "出口日期"],
 };
 function extLabel(k) { return EXT_L[k] ? EXT_L[k][lang === "zh" ? 1 : 0] : k; }
 function normalizeEfapiao(k, v) {
@@ -871,12 +895,71 @@ function parseEfapiao(text) {
   return out;
 }
 
+// Class 3 documents (生产月报, 报关单) carry the calculation's denominator
+// and CN code: parse them into candidates too, so the production log
+// actually feeds the math instead of decorating the dossier (R23).
+const PROD_MAP = {
+  "企业名称": "millName", "月份": "prodMonth",
+  "CN编码": "cnCode", "HS编码": "cnCode",
+  "本月产量": "outputT", "净重": "netWeightKg",
+  "电力": "elecKwh", "天然气": "gasM3", "出口日期": "exportDate",
+};
+const PROD_UNITS = { outputT: "吨", netWeightKg: "千克", elecKwh: "千瓦时", gasM3: "立方米" };
+function normalizeProd(k, v) {
+  const unit = PROD_UNITS[k];
+  if (unit && v.indexOf(unit) >= 0) v = v.slice(0, v.indexOf(unit)).trim();
+  if (k === "cnCode") { const d = v.replace(/\D/g, ""); if (d.length === 8) return d; }
+  if (k === "prodMonth") { const m = /(\d{4})年(\d{1,2})月/.exec(v); if (m) return m[1] + "-" + m[2].padStart(2, "0"); }
+  if (k === "exportDate") { const m = /(\d{4})年(\d{1,2})月(\d{1,2})日/.exec(v); if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0"); }
+  return v;
+}
+function parseProdLog(text) {
+  const out = {};
+  if (!text) return out;
+  for (const lineTxt of text.split(/\r?\n/)) {
+    const m = /^\s*([^:：]+)\s*[:：]\s*(.+)$/.exec(lineTxt);
+    if (!m) continue;
+    const key = PROD_MAP[m[1].trim()];
+    if (key && out[key] === undefined) out[key] = normalizeProd(key, m[2].trim());
+  }
+  return out;
+}
+// One parse entry per document class: production statements use the
+// production parser; invoice-shaped documents use the e-fapiao parser.
+function parseDocument(cls, text) { return cls === "production" ? parseProdLog(text) : parseEfapiao(text); }
+// The production candidates become the form's numbers (CN code, net mass —
+// the tonnage denominator): prefill only empty fields, and remember the
+// source file so step 2 can show the provenance. The human still verifies.
+function prefillFromProduction() {
+  (wiz.docs.production || []).forEach(rec => {
+    if (!rec.parsed) return;
+    wiz.prefill = wiz.prefill || {};
+    const f = rec.fields;
+    if (f.cnCode && CN[f.cnCode] && !wiz.draft.cnCode) {
+      wiz.draft.cnCode = f.cnCode;
+      wiz.prefill.cnCode = rec.name;
+    }
+    const kg = parseFloat(f.netWeightKg);
+    if (!isNaN(kg) && kg > 0 && !wiz.draft.netMassKg) {
+      wiz.draft.netMassKg = String(kg);
+      wiz.prefill.netMassKg = rec.name;
+    } else if (f.outputT && !wiz.draft.netMassKg) {
+      const tonnes = parseFloat(f.outputT);
+      if (!isNaN(tonnes) && tonnes > 0) {
+        wiz.draft.netMassKg = String(tonnes * 1000);
+        wiz.prefill.netMassKg = rec.name;
+      }
+    }
+  });
+  updateNav();
+}
+
 // ---------- wizard state ----------
 let wiz = null; // {mode, step, docs:{energy:[rec],materials:[],production:[]}, f, verified, draft}
 // doc record: {name, parsed, fields:{...}}
 function openWizard() {
   const mode = role === "importer" ? "consignment" : "pack";
-  wiz = { mode, step: 1, docs: { energy: [], materials: [], production: [] }, f: {}, verified: {}, draft: {} };
+  wiz = { mode, step: 1, docs: { energy: [], materials: [], production: [] }, f: {}, verified: {}, draft: {}, prefill: {} };
   renderWizard();
   $("#wizBg").classList.add("open");
 }
@@ -897,7 +980,11 @@ function computeDraft() {
   const gross = totalEm * price - paid;
   const factorPct = cbamFactorPct(y);
   const net = factorPct === null ? null : totalEm * (factorPct / 100) * price - paid;
-  return { y, tMass, perT, sector, basis, unverified, mu, totalEm, gross, factorPct, net };
+  // The same obligation on the raw (unmarked-up) emissions: what the
+  // declaration converges to once the verifier signs an actual-basis pack.
+  const rawEm = tMass * perT;
+  const netVerified = factorPct === null ? rawEm * price - paid : rawEm * (factorPct / 100) * price - paid;
+  return { y, tMass, perT, sector, basis, unverified, mu, totalEm, gross, factorPct, net, netVerified };
 }
 
 function renderWizard() {
@@ -919,6 +1006,9 @@ function renderWizard() {
   else if (S === 2) renderStep2(b);
   else renderStep4(b);
   updateNav();
+  // The wizard body was just rebuilt: its tip elements carry data-tipkey
+  // but no text yet — resolve them now or the tooltip renders blank.
+  resolveTips();
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
@@ -937,12 +1027,20 @@ function renderStep1(b) {
       <div class="docclass">
         <h4>${t(tt)}</h4>
         <p class="hint">${t(hh)}</p>
-        <div class="chips">${recs.map(r => `<span class="chip">${esc(r.name)}${r.parsed ? " · ✓ " + Object.keys(r.fields).length : ""}</span>`).join("") || `<span class="hint">${t("none")}</span>`}</div>
+        <div class="chips">${recs.map((r, idx) => `<span class="chip">${esc(r.name)}${r.parsed ? " · ✓ " + Object.keys(r.fields).length : ""}<button type="button" title="${t("removeDoc")}" aria-label="${t("removeDoc")}: ${esc(r.name)}" onclick="removeDoc('${key}', ${idx})">×</button></span>`).join("") || `<span class="hint">${t("none")}</span>`}</div>
         ${parsedCount ? `<p class="hint accent" style="margin-top:8px">${t("extFields").replace("{n}", parsedCount)}</p>` : ""}
         <button class="btn ghost" style="margin-top:8px" onclick="pickFiles('${key}')">＋ ${t("addFiles")}</button>
         <input type="file" id="file-${key}" multiple onchange="onFiles('${key}', this)" accept="image/*,.pdf,.xml,.txt,.csv,.xlsx">
       </div>`;
     }).join("")}`;
+}
+// Remove an attachment from the draft. Extracted-field verification given
+// earlier is void afterwards: the remaining extracts shift index, so every
+// `ext:` checkbox resets — the human re-verifies against what is left (R16).
+function removeDoc(key, idx) {
+  (wiz.docs[key] || []).splice(idx, 1);
+  Object.keys(wiz.verified).forEach(k => { if (k.indexOf("ext:") === 0) delete wiz.verified[k]; });
+  renderWizard();
 }
 function pickFiles(k) { document.getElementById("file-" + k).click(); }
 function onFiles(k, input) {
@@ -951,14 +1049,19 @@ function onFiles(k, input) {
   let pending = files.length;
   const done = () => { if (--pending === 0) renderWizard(); };
   files.forEach(f => {
-    // Attachments stay on the device. Structured text (e-fapiao) is parsed
-    // locally into field CANDIDATES; images/PDFs wait for manual entry —
-    // offline OCR is the companion tool's job, never the core's (R16/R17/R22).
+    // Attachments stay on the device. Structured text (e-fapiao invoices,
+    // production statements) is parsed locally into field CANDIDATES;
+    // images/PDFs wait for manual entry — offline OCR is the companion
+    // tool's job, never the core's (R16/R17/R22).
     const rec = { name: f.name, parsed: false, fields: {} };
-    const finish = () => { wiz.docs[k].push(rec); done(); };
+    const finish = () => {
+      wiz.docs[k].push(rec);
+      if (k === "production") prefillFromProduction();
+      done();
+    };
     if (/\.(txt|xml|csv|json)$/i.test(f.name)) {
       const r = new FileReader();
-      r.onload = () => { rec.fields = parseEfapiao(String(r.result)); rec.parsed = Object.keys(rec.fields).length >= 2; finish(); };
+      r.onload = () => { rec.fields = parseDocument(k, String(r.result)); rec.parsed = Object.keys(rec.fields).length >= 2; finish(); };
       r.onerror = finish;
       r.readAsText(f);
     } else finish();
@@ -975,6 +1078,7 @@ function renderStep2(b) {
         <p class="hint" style="margin-top:6px">${t("sampleCodes")}</p></div>
       <div class="fgroup"><label>${t("netMass")}</label><input type="number" id="f-netMassKg" min="0" step="1" value="${f.netMassKg || ""}" oninput="onField('netMassKg', this.value)"></div>
     </div>
+    ${(wiz.prefill && (wiz.prefill.cnCode || wiz.prefill.netMassKg)) ? `<p class="hint accent" style="margin:0 0 14px">${t("prefillNote").replace("{f}", esc(wiz.prefill.cnCode || wiz.prefill.netMassKg))}</p>` : ""}
     <div class="frow">
       <div class="fgroup"><label>${t("origin")}</label><input type="text" id="f-origin" value="${f.origin || ""}" oninput="onField('origin', this.value)"></div>
       <div class="fgroup"><label>${t("prodCountry")}</label><input type="text" id="f-prodCountry" value="${f.prodCountry || ""}" oninput="onField('prodCountry', this.value)"></div>
@@ -1031,16 +1135,17 @@ function renderLiveMath() {
   const body = document.getElementById("liveMathBody");
   if (!body || !wiz) return;
   const c = computeDraft();
-  const showMu = c.unverified && c.mu !== null;
+  const showMu = c.unverified && c.mu !== null && c.mu > 0;
   const netVal = c.net === null ? c.gross : c.net;
   body.innerHTML = `
     ${line(t("massT"), c.tMass.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " t")}
     ${line(t("basisLbl"), c.basis === "actual" ? t("actual") + (!c.unverified ? " · " + t("verified") : "") : t("dflt"))}
-    ${showMu ? line(t("markUp") + " (" + c.y + ")", "+" + c.mu + "%", "warn") : ""}
+    ${showMu ? line(t("markUp") + " (" + c.y + ")" + (c.basis === "actual" ? " · " + t("markupUntil") : ""), "+" + c.mu + "%", "warn") : ""}
     ${line(t("emissionsTotal"), fmt2(c.totalEm) + " tCO₂e")}
     ${c.factorPct !== null ? line(t("factorLbl") + " (" + c.y + ")", c.factorPct + "%") : ""}
     ${line(t("grossLbl"), "€" + fmt2(c.gross))}
     ${line(t("netLbl"), "€" + fmt2(netVal), "total grand")}
+    ${(wiz.mode === "pack" && c.basis === "actual" && c.unverified && showMu) ? line(t("onceVerified"), "€" + fmt2(c.netVerified), "good") : ""}
     <div class="formula">${t("formulaNet")}</div>
     ${wiz.mode === "pack" ? `<p class="note">${t("packBuyerNote")}</p>` : ""}
     ${packWorthLine(c)}`;
@@ -1061,8 +1166,13 @@ function packWorthLine(c) {
 
 function verifyKeys() {
   const base = ["cnCode", "netMassKg", "origin", "prodCountry", "installation", "importDate", "basis", "emissionsPerT", "carbonPricePaid"];
-  (wiz.docs.energy || []).forEach((rec, i) => {
-    if (rec.parsed) Object.keys(rec.fields).forEach(f => base.push("ext:" + i + ":" + f));
+  // Extracted fields from BOTH parsed classes become verification rows:
+  // invoice fields from energy bills, output/CN-code fields from production
+  // statements — the human verifies each against its attachment (R16/R23).
+  [["energy", "e"], ["production", "p"]].forEach(([cls, tag]) => {
+    (wiz.docs[cls] || []).forEach((rec, i) => {
+      if (rec.parsed) Object.keys(rec.fields).forEach(f => base.push("ext:" + tag + ":" + i + ":" + f));
+    });
   });
   return base;
 }
@@ -1080,12 +1190,14 @@ function renderStep4(b) {
     ["emissionsPerT", t("emissionsPerT"), f.emissionsPerT || "—"],
     ["carbonPricePaid", t("carbonPaid"), f.carbonPricePaid || "—"],
   ];
-  // Extracted e-fapiao fields are candidates too — the human verifies each
-  // against the attachment before anything is saved (R16).
-  (wiz.docs.energy || []).forEach((rec, i) => {
-    if (!rec.parsed) return;
-    Object.entries(rec.fields).forEach(([k, v]) => {
-      rows.push(["ext:" + i + ":" + k, extLabel(k) + " · " + rec.name, v]);
+  // Extracted e-fapiao and production-log fields are candidates too — the
+  // human verifies each against the attachment before anything is saved (R16).
+  [["energy", "e"], ["production", "p"]].forEach(([cls, tag]) => {
+    (wiz.docs[cls] || []).forEach((rec, i) => {
+      if (!rec.parsed) return;
+      Object.entries(rec.fields).forEach(([k, v]) => {
+        rows.push(["ext:" + tag + ":" + i + ":" + k, extLabel(k) + " · " + rec.name, v]);
+      });
     });
   });
   b.innerHTML = `
@@ -1215,6 +1327,28 @@ function consRow(c) {
   return { name };
 }
 
+// Math for a SAVED record, derived from its stored fields at read time —
+// the pinned schedules, the same rule as the wizard panel. The snapshot
+// saved with the record is only the creation-time view: verification is a
+// later act (Verifier → Review), and when it happens the mark-up MUST drop
+// out of every rendered or exported number.
+function recordMath(c) {
+  const y = c.importDate ? parseInt(c.importDate.slice(0, 4), 10) : year;
+  const tMass = kgToT(c.netMassKg || 0);
+  const perT = c.emissionsPerT || 0;
+  const sector = c.sector || (CN[c.cnCode] || {}).s || "";
+  const unverified = c.basis !== "actual" || !c.verifierChecked;
+  const muRaw = markupPct(y, sector);
+  const mu = unverified && muRaw !== null ? muRaw : 0;
+  const totalEm = tMass * perT * (1 + mu / 100);
+  const price = ets.value || 0;
+  const paid = c.carbonPricePaid || 0;
+  const gross = totalEm * price - paid;
+  const factorPct = cbamFactorPct(y);
+  const net = factorPct === null ? null : totalEm * (factorPct / 100) * price - paid;
+  return { y, tMass, perT, sector, unverified, mu, totalEm, gross, factorPct, net };
+}
+
 function renderConsignments() {
   $("#newConsLbl").textContent = t("newConsLbl");
   const rows = cons.filter(isCons);
@@ -1291,15 +1425,81 @@ function downloadJSON(obj, name) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
-function doPackExport(id) {
-  const c = cons.find(x => x.id === id);
-  if (!c) return;
-  downloadJSON({
+// The pack's plain-field payload (file:// fallback and the Merkle leaf
+// descriptors share these values — the sealed VP carries the same numbers).
+function packExportFields(c) {
+  return {
     pack_id: c.id, installation_id: c.installation, cn_code: c.cnCode,
     net_mass_kg: c.netMassKg, production_country: c.prodCountry,
     determination_basis: c.basis, emissions_tco2e_per_t: c.emissionsPerT, period: c.importDate,
-  }, "kaimeter-pack-" + c.id + ".json");
-  toast(t("toastExported"));
+  };
+}
+function packEvidenceLeaves(c) {
+  const fields = packExportFields(c);
+  const leaves = Object.entries(fields).map(([k, v]) => k + "=" + v);
+  (c.docs && c.docs.production ? c.docs.production : []).forEach(r => leaves.push("evidence:" + r.name));
+  return leaves;
+}
+function doPackExport(id) {
+  const c = cons.find(x => x.id === id);
+  if (!c) return;
+  const plain = () => {
+    downloadJSON(packExportFields(c), "kaimeter-pack-" + c.id + ".json");
+    toast(t("toastExported"));
+  };
+  // From file:// there is no core to seal with — plain JSON, honestly
+  // labelled by the preview note. Served by the binary, the export is the
+  // R21 sealed pack: Merkle root over the evidence, Ed25519-signed,
+  // serialized as a W3C Verifiable Presentation.
+  if (!API_UP) { plain(); return; }
+  fetch("/api/pack/seal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      installation_ref: c.installation || "",
+      cn_code: c.cnCode,
+      emission_factor_tco2e_per_t: c.emissionsPerT || 0,
+      embedded_emissions_tco2e: kgToT(c.netMassKg || 0) * (c.emissionsPerT || 0),
+      evidence_leaves: packEvidenceLeaves(c),
+    }),
+  })
+    .then(r => (r.ok ? r.json() : null))
+    .then(j => {
+      if (!j || !j.vp) { plain(); return; }
+      downloadJSON(j.vp, "kaimeter-pack-" + c.id + ".vp.jsonld");
+      toast(t("toastExported"));
+    })
+    .catch(plain);
+}
+
+// Verifier → Review: import a downloaded pack file and check its proof.
+// The check itself runs in the verifier's own copy of the core — nothing
+// but the file is used, no Kaimeter server, no shared state (R21/R28).
+function pickPackFile() { document.getElementById("packFile").click(); }
+function onPackFile(input) {
+  const f = input.files && input.files[0];
+  input.value = "";
+  if (!f) return;
+  const el = $("#verifyResult");
+  const reader = new FileReader();
+  reader.onload = () => {
+    let vp;
+    try { vp = JSON.parse(String(reader.result)); } catch (e) { el.textContent = t("verifyBad"); return; }
+    if (!API_UP) { el.textContent = t("verifyNeedsCore"); return; }
+    fetch("/api/pack/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vp }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => {
+        if (j && j.valid && j.content) {
+          el.innerHTML = `<span class="stamp">${t("verifyOk")}</span> <span class="hint">${esc(j.content.cn_code || "")} · ${esc(j.content.installation_ref || "")}</span>`;
+        } else el.textContent = t("verifyBad");
+      })
+      .catch(() => { el.textContent = t("verifyNeedsCore"); });
+  };
+  reader.readAsText(f);
 }
 
 function renderReview() {
@@ -1331,6 +1531,10 @@ function verifyPack(id) {
   c.verifierChecked = true;
   c.verifiedAt = new Date().toISOString().slice(0, 10);
   c.status = "verified";
+  // Verification changes the math: the mark-up the creation-time snapshot
+  // carried is gone — recompute so previews and exports pay on actuals.
+  const m = recordMath(c);
+  c.totalEm = m.totalEm; c.gross = m.gross; c.net = m.net; c.factorPct = m.factorPct;
   saveCons();
   renderReview();
   toast(t("toastVerifiedPack"));
@@ -1372,13 +1576,14 @@ function renderExport() {
 function doExport(id) {
   const c = cons.find(x => x.id === id);
   if (!c) return;
+  const m = recordMath(c);
   downloadJSON({
     consignment_id: c.id, cn_code: c.cnCode, net_mass_kg: c.netMassKg,
     country_of_origin: c.origin, production_country: c.prodCountry,
     installation_id: c.installation, import_date: c.importDate,
     determination_basis: c.basis,
     embedded_emissions_tco2e_per_t: c.emissionsPerT,
-    total_embedded_emissions_tco2e: Math.round(c.totalEm * 1000) / 1000,
+    total_embedded_emissions_tco2e: Math.round(m.totalEm * 1000) / 1000,
     carbon_price_paid_eur: c.carbonPricePaid,
   }, "kaimeter-consignment-" + c.id + ".json");
   toast(t("toastExported"));
@@ -1386,6 +1591,18 @@ function doExport(id) {
 $("#exportSel").addEventListener("change", renderExport);
 $("#packSel").addEventListener("change", renderPacks);
 
+// Term tooltips: resolve every data-tipkey through the translation layer so
+// tip text re-localizes with the rest of the UI (R13). The CSS reads the
+// data-tip attribute directly, so this must run after EVERY render pass —
+// the views and the wizard body inject fresh tip elements, and an unresolved
+// tipkey renders as a blank tooltip.
+function resolveTips() {
+  document.querySelectorAll("[data-tipkey]").forEach(el => {
+    const txt = t(el.dataset.tipkey);
+    el.setAttribute("data-tip", txt);
+    el.setAttribute("aria-label", txt);
+  });
+}
 function renderAll() {
   document.title = t("docTitle");
   $("#roleName").innerHTML = role ? `<span class="rname">${t(roleKey(role))}</span>` : "·";
@@ -1395,13 +1612,6 @@ function renderAll() {
   langSel.innerHTML = Object.keys(L).sort().map(c =>
     `<option value="${c}"${c === lang ? " selected" : ""}>${esc(L[c].langName || c)}</option>`).join("");
   langSel.setAttribute("aria-label", t("language"));
-  // Term tooltips: resolve every data-tipkey through the translation layer
-  // so tip text re-localizes with the rest of the UI (R13).
-  document.querySelectorAll("[data-tipkey]").forEach(el => {
-    const txt = t(el.dataset.tipkey);
-    el.setAttribute("data-tip", txt);
-    el.setAttribute("aria-label", txt);
-  });
   const newBtn = $("#newConsBtn");
   newBtn.style.display = role === "verifier" ? "none" : "";
   renderTabs();
@@ -1411,6 +1621,7 @@ function renderAll() {
   else if (currentView === "packs") renderPacks();
   else if (currentView === "review") renderReview();
   renderWizard();
+  resolveTips();
 }
 function toast(msg) {
   const el = $("#toast");

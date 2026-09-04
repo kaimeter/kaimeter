@@ -839,10 +839,40 @@ pub fn save_declaration(
 }
 
 // ---------------------------------------------------------------------------
-// Role selection (R47): settings table, key `role_selection`
+// Settings (R47 and beyond): the settings table as a flat local key/value
+// store — role selection, the local pack-signing key, and future device
+// configuration all live here
 // ---------------------------------------------------------------------------
 
 const ROLE_SETTING_KEY: &str = "role_selection";
+
+/// Persist one setting (settings table: upsert by key).
+///
+/// # Errors
+///
+/// [`DomainError::Storage`] on backend failure.
+pub fn set_setting(storage: &dyn Storage, key: &str, value: &str) -> Result<(), DomainError> {
+    storage
+        .execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2) \
+             ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = \
+             strftime('%Y-%m-%dT%H:%M:%fZ','now')",
+            &[key, value],
+        )
+        .map_err(storage_err)?;
+    Ok(())
+}
+
+/// Read one setting, `None` when never written.
+///
+/// # Errors
+///
+/// [`DomainError::Storage`] on backend failure.
+pub fn get_setting(storage: &dyn Storage, key: &str) -> Result<Option<String>, DomainError> {
+    storage
+        .query_scalar("SELECT value FROM settings WHERE key = ?1", &[key])
+        .map_err(storage_err)
+}
 
 /// Persist the serialized role selection (`roles::persist` output) to the
 /// settings table (R47: stored locally, resettable).
@@ -851,15 +881,7 @@ const ROLE_SETTING_KEY: &str = "role_selection";
 ///
 /// [`DomainError::Storage`] on backend failure.
 pub fn set_role(storage: &dyn Storage, role_json: &str) -> Result<(), DomainError> {
-    storage
-        .execute(
-            "INSERT INTO settings (key, value) VALUES (?1, ?2) \
-             ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = \
-             strftime('%Y-%m-%dT%H:%M:%fZ','now')",
-            &[ROLE_SETTING_KEY, role_json],
-        )
-        .map_err(storage_err)?;
-    Ok(())
+    set_setting(storage, ROLE_SETTING_KEY, role_json)
 }
 
 /// The stored role selection JSON, or `None` before the first run (R47).
@@ -868,12 +890,7 @@ pub fn set_role(storage: &dyn Storage, role_json: &str) -> Result<(), DomainErro
 ///
 /// [`DomainError::Storage`] on backend failure.
 pub fn get_role(storage: &dyn Storage) -> Result<Option<String>, DomainError> {
-    storage
-        .query_scalar(
-            "SELECT value FROM settings WHERE key = ?1",
-            &[ROLE_SETTING_KEY],
-        )
-        .map_err(storage_err)
+    get_setting(storage, ROLE_SETTING_KEY)
 }
 
 /// Delete the stored role selection (the settings reset, R47).

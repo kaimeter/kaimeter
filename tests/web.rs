@@ -931,6 +931,100 @@ async fn api_end_to_end_pass() {
     assert!(!scoped_events.is_empty());
 }
 
+/// R21 sealed packs: seal → verify round-trips offline; any payload edit
+/// breaks the proof; the signer identity (did:key) is stable across seals
+/// (one local key, not a fresh identity per export).
+#[tokio::test]
+async fn api_pack_seal_verify_and_tamper_evidence() {
+    let (app, _) = api_app("packseal");
+    let leaves = [
+        "evidence:production-log-sample.txt",
+        "cn_code=76041010",
+        "net_mass_kg=800000",
+        "emissions_tco2e_per_t=8.6",
+    ];
+    let body = json!({
+        "installation_ref": "INST-CN-AL-01",
+        "cn_code": "76041010",
+        "emission_factor_tco2e_per_t": 8.6,
+        "embedded_emissions_tco2e": 6880.0,
+        "evidence_leaves": leaves,
+    });
+
+    let (status, sealed) = call(app.clone(), "POST", "/api/pack/seal", Some(body.clone())).await;
+    assert_eq!(status, StatusCode::CREATED, "seal: {sealed}");
+    let vp = &sealed["vp"];
+    assert_eq!(vp["type"], json!(["VerifiablePresentation"]));
+    let proof = &vp["verifiableCredential"]["proof"];
+    assert_eq!(proof["type"], "DataIntegrityProof");
+    assert!(
+        proof["verificationMethod"]
+            .as_str()
+            .unwrap_or("")
+            .starts_with("did:key:"),
+        "the signer is anchored by did:key in the VP itself"
+    );
+    let subject = &vp["verifiableCredential"]["credentialSubject"];
+    assert_eq!(subject["cn_code"], "76041010");
+    // The Merkle root over the evidence leaves is pinned in the payload.
+    assert_eq!(
+        subject["production_log_merkle_root"].as_str().map(str::len),
+        Some(64)
+    );
+    assert!(
+        sealed["vc_jwt"].as_str().unwrap_or("").contains('.'),
+        "VC-JWT twin present"
+    );
+
+    // The untouched VP verifies; the verified content comes back as data.
+    let (status, verdict) = call(
+        app.clone(),
+        "POST",
+        "/api/pack/verify",
+        Some(json!({ "vp": vp })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(verdict["valid"], true);
+    assert_eq!(verdict["content"]["emission_factor_tco2e_per_t"], 8.6);
+
+    // Tampering — the exact Notepad edit the critique describes — breaks
+    // the proof: 8.6 becomes 0.1, verify says so without any shared state.
+    let mut tampered = vp.clone();
+    tampered["verifiableCredential"]["credentialSubject"]["emission_factor_tco2e_per_t"] =
+        json!(0.1);
+    let (_, verdict) = call(
+        app.clone(),
+        "POST",
+        "/api/pack/verify",
+        Some(json!({ "vp": tampered })),
+    )
+    .await;
+    assert_eq!(
+        verdict["valid"], false,
+        "tamper must be a finding, not a 500"
+    );
+
+    // A malformed pack body fails closed at 400.
+    let (status, _) = call(
+        app.clone(),
+        "POST",
+        "/api/pack/seal",
+        Some(json!({
+            "installation_ref": "INST",
+            "cn_code": "760410",
+            "emission_factor_tco2e_per_t": 1.0,
+            "embedded_emissions_tco2e": 1.0,
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "short CN code refused");
+
+    // The same local key signs every pack: the did:key is stable.
+    let (_, second) = call(app, "POST", "/api/pack/seal", Some(body)).await;
+    assert_eq!(second["did"], sealed["did"], "one device key across seals");
+}
+
 /// R7: with no price anywhere the exposure endpoint answers 409 rather than
 /// guessing; the manual price cache unlocks it with visible flags.
 #[tokio::test]
