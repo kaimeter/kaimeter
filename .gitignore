@@ -1,6 +1,7 @@
 /target
 /data
 /dist
+/secrets/
 *.db
 *.db-wal
 *.db-shm
