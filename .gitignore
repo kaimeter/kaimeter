@@ -1,5 +1,6 @@
 /target
 /data
+/dist
 *.db
 *.db-wal
 *.db-shm
