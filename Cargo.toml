@@ -1,6 +1,6 @@
 [package]
 name = "kaimeter-core"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0"
@@ -8,6 +8,8 @@ description = "Kaimeter: open-core CBAM compliance toolkit (core server)"
 repository = "https://github.com/kaimeter/kaimeter"
 readme = "README.md"
 publish = false
+# `cargo run` boots the server; regen-wizard is a dev tool (bin-default).
+default-run = "kaimeter"
 
 # The product is named kaimeter (README, systemd unit, container entrypoint);
 # only the package/crate carries the -core suffix.

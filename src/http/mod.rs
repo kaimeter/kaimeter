@@ -14,10 +14,8 @@ use serde_json::json;
 
 use crate::state::AppState;
 
-/// The 0.1.0 demo wizard embedded at compile time — a single zero-dependency
-/// file served at `/` (web/wizard.html ships inside the binary;
-/// it also stays runnable standalone from `file://`).
-const WIZARD_HTML: &str = include_str!("../../web/wizard.html");
+#[cfg(test)]
+use crate::wizard::WIZARD_TEMPLATE;
 
 /// Build the application router.
 pub fn router(state: AppState) -> Router {
@@ -31,9 +29,12 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// `GET /` and `GET /wizard.html` — the offline demo wizard.
-async fn wizard() -> Html<&'static str> {
-    Html(WIZARD_HTML)
+/// `GET /` and `GET /wizard.html` — the offline demo wizard. Served from the
+/// state's pre-rendered copy so the page's dictionaries always match the
+/// loaded locales: with embedded locales the bytes equal the repo artifact;
+/// with a `locales/` directory on disk the wizard is re-localized too.
+async fn wizard(State(state): State<AppState>) -> Html<String> {
+    Html(state.wizard_html().as_ref().clone())
 }
 
 /// `GET /healthz` — liveness probe.
@@ -86,6 +87,14 @@ mod tests {
         AppState::new_for_tests(i18n, tag)
     }
 
+    /// A state built on the compiled-in locales — the single-file deployment
+    /// path, where the served wizard must equal the repo artifact byte for
+    /// byte.
+    fn embedded_state(tag: &str) -> AppState {
+        let i18n = crate::i18n::I18n::embedded().expect("embedded locales");
+        AppState::new_for_tests(i18n, tag)
+    }
+
     #[tokio::test]
     async fn healthz_returns_ok_json() {
         let app = router(test_state("healthz"));
@@ -106,7 +115,7 @@ mod tests {
 
     #[tokio::test]
     async fn root_serves_embedded_wizard() {
-        let app = router(test_state("wizard"));
+        let app = router(embedded_state("wizard"));
         let res = app
             .oneshot(
                 axum::http::Request::builder()
@@ -127,10 +136,48 @@ mod tests {
         let html = std::str::from_utf8(&body).expect("wizard is utf-8");
         assert!(html.starts_with("<!DOCTYPE html>"));
         assert!(html.contains("Kaimeter"));
-        // The served asset is byte-identical to the repo file (embedded at
-        // compile time) — one artifact, two delivery modes (file:// and `/`).
-        let on_disk = include_str!("../../web/wizard.html");
-        assert_eq!(html, on_disk);
+        // With embedded locales the served asset is byte-identical to the
+        // repo file — one artifact, two delivery modes (file:// and `/`).
+        assert_eq!(html, WIZARD_TEMPLATE);
+    }
+
+    #[tokio::test]
+    async fn disk_locales_relocalize_the_served_wizard() {
+        // A configured locales directory re-localizes the wizard UI too, not
+        // just backend messages: its ui.* dictionaries replace the generated
+        // block in the served page.
+        let dir = std::env::temp_dir().join("kaimeter-http-test-wizard-disk");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        std::fs::write(
+            dir.join("en.json"),
+            r#"{"welcome":"hi","ui.docTitle":"Override Title"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("zh-CN.json"),
+            r#"{"welcome":"你好","ui.docTitle":"覆盖标题"}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.join("termbase.json"), r#"{"terms":{}}"#).unwrap();
+        let i18n = crate::i18n::I18n::load(&dir).expect("i18n load");
+        let state = AppState::new_for_tests(i18n, "wizard-disk");
+
+        let app = router(state);
+        let res = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/wizard.html")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        let html = std::str::from_utf8(&body).expect("wizard is utf-8");
+        assert!(html.contains("Override Title"), "ui override served");
+        assert_ne!(html, WIZARD_TEMPLATE);
     }
 
     #[tokio::test]

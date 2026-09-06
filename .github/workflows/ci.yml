@@ -74,10 +74,10 @@ jobs:
     needs: [build-release]
     if: github.event_name == 'release'
     permissions:
-      contents: read
+      # Upload the signed artifacts to the release (assets).
+      contents: write
       # Required for cosign keyless signing via GitHub OIDC (Fulcio/Rekor).
       id-token: write
-      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,12 +89,15 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      # SBOM for the release binary itself, written to the path
+      # attest-blob expects. (sbom-action's `artifact-name` is the OUTPUT
+      # file name and must not carry a directory prefix — hence scanning
+      # directly instead of going through the action.)
       - name: Generate SBOM (syft)
-        uses: anchore/sbom-action@v0
-        with:
-          artifact-name: dist/${{ env.BINARY_NAME }}
-          format: spdx-json
-          upload-artifact: true
+        run: syft scan "dist/${BINARY_NAME}" -o "spdx-json=sbom-spdx.json"
 
       - name: Sign binary with cosign (keyless, OIDC)
         run: |
@@ -112,10 +115,22 @@ jobs:
             --bundle "dist/${BINARY_NAME}.sbom.attest.bundle" \
             "dist/${BINARY_NAME}"
 
+      - name: Attach artifacts to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "dist/${BINARY_NAME}" \
+            "dist/${BINARY_NAME}.bundle" \
+            "dist/${BINARY_NAME}.sbom.attest.bundle" \
+            "sbom-spdx.json" \
+            --clobber
+
       - uses: actions/upload-artifact@v4
         with:
           name: signed-release
           path: |
             dist/${{ env.BINARY_NAME }}.bundle
             dist/${{ env.BINARY_NAME }}.sbom.attest.bundle
+            sbom-spdx.json
           if-no-files-found: error

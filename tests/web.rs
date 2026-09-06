@@ -275,15 +275,17 @@ fn extracted_fields_route_through_human_verification() {
 
 #[test]
 fn term_tips_resolve_in_every_dictionary() {
-    // Every data-tipkey="K" must be defined once per language dictionary in
-    // the wizard source (en + zh today) — a tip that renders untranslated
-    // breaks the i18n-first contract.
+    // Every data-tipkey="K" must resolve in BOTH locale dictionaries (the
+    // dictionaries are generated from locales/*.json) — a tip that renders
+    // untranslated breaks the i18n-first contract.
+    let i18n = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
+    let dicts = i18n.ui_dictionaries();
     let mut keys = Vec::new();
     let mut rest = WIZARD;
     while let Some(pos) = rest.find("data-tipkey=\"") {
         let after = &rest[pos + "data-tipkey=\"".len()..];
         let end = after.find('"').expect("closing quote");
-        keys.push(&after[..end]);
+        keys.push(after[..end].to_string());
         rest = after;
     }
     assert!(
@@ -291,11 +293,47 @@ fn term_tips_resolve_in_every_dictionary() {
         "expected the term tooltips on dashboard + preview headings, found {keys:?}"
     );
     for k in keys {
-        let occurrences = WIZARD.matches(&format!("{k}:")).count();
-        assert!(
-            occurrences >= 2,
-            "tooltip key {k} must be defined in BOTH dictionaries, found {occurrences}"
-        );
+        for code in ["en", "zh-CN"] {
+            assert!(
+                dicts[code].contains_key(&k),
+                "tooltip key {k} must be defined in BOTH dictionaries ({code} missing)"
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 4c. Static chrome keys resolve through the locale files
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wizard_chrome_keys_resolve_in_both_locales() {
+    // Every data-i18n attribute must be a key the locale pair defines in the
+    // `ui.*` namespace in BOTH languages — the same contract the term tips
+    // carry (4b), extended to the hydrated static chrome. The dictionaries
+    // themselves are generated from locales/*.json into the marked region.
+    let i18n = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
+    let dicts = i18n.ui_dictionaries();
+    let mut keys = Vec::new();
+    let mut rest = WIZARD;
+    while let Some(pos) = rest.find("data-i18n=\"") {
+        let after = &rest[pos + "data-i18n=\"".len()..];
+        let end = after.find('"').expect("closing quote");
+        keys.push(after[..end].to_string());
+        rest = after;
+    }
+    assert!(
+        keys.len() >= 50,
+        "expected the static chrome to carry data-i18n keys, found {}",
+        keys.len()
+    );
+    for k in keys {
+        for code in ["en", "zh-CN"] {
+            assert!(
+                dicts[code].contains_key(&k),
+                "chrome key {k:?} missing from the {code} locale"
+            );
+        }
     }
 }
 

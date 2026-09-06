@@ -32,13 +32,19 @@ Commits must be GPG-signed. See GitHub's guide to
 
 ## Locale files
 
-Locale strings live in `locales/` as flat key-value JSON dictionaries.
+Locale strings live in `locales/` as flat key-value JSON dictionaries — the
+single authoring source for every translation: backend messages and the
+wizard UI alike.
 
 - `en.json` is canonical: every other locale must carry exactly the same
   keys. The loader refuses to start with a locale that is missing a key, so
   a half-translated locale can never ship.
-- Keys are dot-namespaced by surface — `app.*` for interface strings,
-  `core.error.*` for domain errors. Segments are lowercase snake_case.
+- Keys are dot-namespaced by surface — `core.error.*` for domain errors,
+  `calendar.*` for regulatory deadlines, `ui.*` for wizard UI strings
+  (the prefix is stripped at render time; reference-catalog labels nest
+  under it, e.g. `ui.country.US`, `ui.cn.73181500`). Segments are lowercase
+  snake_case, except the wizard's legacy camelCase message keys
+  (`ui.step1Title`), which are kept as-is.
 - `termbase.json` holds locked compliance terminology (for example,
   embedded emissions, carbon border adjustment mechanism, goods covered).
   A locked term's renderings live there, one per locale; locked terms are
@@ -46,6 +52,12 @@ Locale strings live in `locales/` as flat key-value JSON dictionaries.
 - Locale codes are BCP-47 (`en`, `zh-CN`, `de`).
 - Adding a locale means adding one file and registering the code in
   `I18n::load` (`src/i18n.rs`).
+- The wizard (`web/wizard.html`) embeds its dictionaries between
+  `/*kaimeter-locales-start*/ … /*kaimeter-locales-end*/` markers so it
+  stays a single file that runs from `file://`. That block is **generated**
+  from the locale files — after editing any `ui.*` key, run
+  `cargo run --bin regen-wizard` and commit the result; a test fails the
+  build when the block is stale. Never hand-edit the block.
 
 ## Workflow
 

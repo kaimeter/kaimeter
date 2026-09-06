@@ -114,11 +114,19 @@ impl I18n {
         if dir.exists() {
             Ok((Self::load(dir)?, LocaleSource::Disk))
         } else {
-            let en = parse_locale("en", EMBEDDED_EN)?;
-            let zh = parse_locale("zh-CN", EMBEDDED_ZH_CN)?;
-            let termbase = parse_termbase(EMBEDDED_TERMBASE)?;
-            Ok((Self::build(en, zh, termbase)?, LocaleSource::Embedded))
+            Ok((Self::embedded()?, LocaleSource::Embedded))
         }
+    }
+
+    /// The compiled-in locale assets — the repo's own `locales/*.json`,
+    /// the same set [`Self::load_or_embedded`] falls back to. This is the
+    /// canonical source the wizard's generated dictionaries come from
+    /// (`regen-wizard`, `crate::wizard`).
+    pub fn embedded() -> Result<Self, I18nError> {
+        let en = parse_locale("en", EMBEDDED_EN)?;
+        let zh = parse_locale("zh-CN", EMBEDDED_ZH_CN)?;
+        let termbase = parse_termbase(EMBEDDED_TERMBASE)?;
+        Self::build(en, zh, termbase)
     }
 
     /// Assemble and validate: every termbase locale must be loaded, and every
@@ -176,6 +184,25 @@ impl I18n {
     /// Loaded locale codes, sorted.
     pub fn locale_codes(&self) -> Vec<String> {
         self.locales.keys().cloned().collect()
+    }
+
+    /// Per-locale dictionaries for the wizard UI: every `ui.*` message with
+    /// the namespace prefix stripped, so the wizard's `t()` keeps its short
+    /// keys (`ui.dash` → `dash`). Sorted maps serialize deterministically,
+    /// which keeps the generated wizard byte-stable.
+    pub fn ui_dictionaries(&self) -> BTreeMap<String, BTreeMap<String, String>> {
+        self.locales
+            .values()
+            .map(|locale| {
+                let messages = locale
+                    .messages
+                    .iter()
+                    .filter(|(k, _)| k.starts_with("ui."))
+                    .map(|(k, v)| (k["ui.".len()..].to_string(), v.clone()))
+                    .collect();
+                (locale.code.clone(), messages)
+            })
+            .collect()
     }
 }
 
@@ -367,5 +394,39 @@ mod tests {
         assert_eq!(source, LocaleSource::Disk);
         assert_eq!(i18n.t("en", "welcome").unwrap(), "From disk");
         assert_eq!(i18n.t("zh-CN", "welcome").unwrap(), "来自磁盘");
+    }
+
+    #[test]
+    fn embedded_assets_carry_the_ui_namespace() {
+        let i18n = I18n::embedded().expect("embedded");
+        let dicts = i18n.ui_dictionaries();
+        let codes: Vec<&str> = dicts.keys().map(String::as_str).collect();
+        assert_eq!(codes, vec!["en", "zh-CN"]);
+        // The wizard's own dictionary keys are present, prefix stripped.
+        assert_eq!(dicts["en"]["dash"], "Dashboard");
+        assert_eq!(dicts["zh-CN"]["dash"], "概览");
+        // Non-ui keys never leak into the wizard dictionaries.
+        assert!(!dicts["en"].contains_key("welcome"));
+    }
+
+    #[test]
+    fn ui_dictionaries_strip_only_the_ui_prefix() {
+        let dir = fixture_dir("uiprefix");
+        std::fs::write(
+            dir.join("en.json"),
+            r#"{"ui.dash":"Dashboard","ui.cn.72083800":"Coil"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("zh-CN.json"),
+            r#"{"ui.dash":"概览","ui.cn.72083800":"钢卷"}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.join("termbase.json"), r#"{"terms":{}}"#).unwrap();
+        let i18n = I18n::load(&dir).expect("load");
+        let dicts = i18n.ui_dictionaries();
+        assert_eq!(dicts["en"]["dash"], "Dashboard");
+        assert_eq!(dicts["en"]["cn.72083800"], "Coil");
+        assert_eq!(dicts["zh-CN"]["cn.72083800"], "钢卷");
     }
 }

@@ -10,10 +10,11 @@ WORKDIR /build
 COPY Cargo.toml ./
 COPY src ./src
 COPY migrations ./migrations
-# Locale JSON assets are embedded into the binary at compile time
-# (include_str!), so they must be present at build time — but they do
-# not ship in the runtime image.
+# Locale JSON assets and the wizard HTML are embedded into the binary at
+# compile time (include_str!), so they must be present at build time — but
+# they do not ship in the runtime image.
 COPY locales ./locales
+COPY web ./web
 
 RUN cargo build --release
 

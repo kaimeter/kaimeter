@@ -27,6 +27,7 @@ pub mod sync;
 pub mod validate;
 pub mod vault;
 pub mod verifier;
+pub mod wizard;
 
 use std::path::Path;
 use std::sync::Arc;

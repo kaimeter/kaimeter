@@ -153,13 +153,21 @@ plan and how to contribute one.
 ## Internationalization
 
 Kaimeter maintains localized UI strings, exports, and regulatory terminology
-via key-value JSON dictionaries stored in the `/locales` directory.
+via key-value JSON dictionaries stored in the `/locales` directory — this is
+the single authoring source for every translation in the product: backend
+messages (`core.error.*`, `calendar.*`, …) and the wizard UI (`ui.*`, which
+also covers reference-catalog labels such as `ui.country.*` and `ui.cn.*`).
 Standardized translation keys ensure strict semantic parity across all
-supported languages for manufacturers, traders, and importers. The locale
-assets for the supported languages are embedded in the executable at
-compile time, so the single-file binary works out of the box; a `locales`
-directory next to it (or `KAIMETER_LOCALES_DIR`) overrides the embedded
-strings without a rebuild.
+supported languages for manufacturers, traders, and importers; the loader
+refuses to start when a locale is missing a key. The locale assets for the
+supported languages are embedded in the executable at compile time, so the
+single-file binary works out of the box; a `locales` directory next to it
+(or `KAIMETER_LOCALES_DIR`) overrides the embedded strings without a rebuild
+— including the wizard's UI dictionaries, which the server re-injects into
+the page it serves. The wizard file (`web/wizard.html`) also runs standalone
+from `file://`; its inline dictionary block is generated from the locale
+files (`cargo run --bin regen-wizard`), never edited by hand, and a test
+fails the build if it drifts.
 
 | Language            | Code    | Status      | File                                       |
 | ------------------- | ------- | ----------- | ------------------------------------------ |
