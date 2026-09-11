@@ -71,7 +71,6 @@ pub fn derive_key(passphrase: &str, salt: &Salt) -> Result<[u8; KEY_LEN], Domain
 /// A sealed payload: version byte, nonce, ciphertext (includes the GCM tag).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SealedPayload {
-    /// Envelope format version.
     pub version: u8,
     /// AES-GCM nonce, base64.
     #[serde(with = "b64_arr_ser")]

@@ -41,7 +41,6 @@ impl MarkupYear {
         }
     }
 
-    /// First calendar year of the bucket.
     #[must_use]
     pub fn first_calendar_year(self) -> i32 {
         match self {

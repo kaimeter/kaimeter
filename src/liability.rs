@@ -11,9 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // R25 — ICR workspaces with physical tenant isolation
-// ---------------------------------------------------------------------------
 
 /// Resolve the physical database path for one EORI's workspace:
 /// `db/tenants/{eori}.db` under the data directory. Per-EORI physical
@@ -75,9 +73,7 @@ pub fn rollup_workspaces(rolls: &[DeclarantRollup]) -> f64 {
     rolls.iter().map(|roll| roll.ytd_net_mass_kg).sum()
 }
 
-// ---------------------------------------------------------------------------
 // R26 — group & multi-installation hierarchy
-// ---------------------------------------------------------------------------
 
 /// One production site in a group (each carries its distinct CBAM
 /// installation ID; site dossiers stay separable).
@@ -85,7 +81,6 @@ pub fn rollup_workspaces(rolls: &[DeclarantRollup]) -> f64 {
 pub struct SiteRecord {
     /// CBAM installation identifier (the verifier-facing unit).
     pub installation_id: String,
-    /// Site display name.
     pub name: String,
     /// ISO-3166 alpha-2 country of the site.
     pub country: String,
@@ -96,7 +91,6 @@ pub struct SiteRecord {
 pub struct GroupHierarchy {
     /// Group identifier.
     pub group_id: String,
-    /// Sites under the group.
     pub sites: Vec<SiteRecord>,
 }
 
@@ -156,9 +150,7 @@ pub fn group_rollup<'a>(
     Ok(paired)
 }
 
-// ---------------------------------------------------------------------------
 // R46 — ICR joint-and-several liability tagging
-// ---------------------------------------------------------------------------
 
 /// Liability tag state for an ICR-filed consignment/workspace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

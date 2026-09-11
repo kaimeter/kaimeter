@@ -24,9 +24,7 @@ use kaimeter_core::dossier::{
     unmetered_flows, BalanceTable, HeatFlow, WasteGasFlow,
 };
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /// A minimal valid consignment for dossier tests.
 fn sample_consignment() -> Consignment {
@@ -47,9 +45,7 @@ fn sample_consignment() -> Consignment {
 /// compiled in so the test never depends on the working directory.
 const EFAPIAO_SAMPLE: &str = include_str!("../samples/energy-bills/e-fapiao-sample.xml");
 
-// ---------------------------------------------------------------------------
 // R23 — three-class completeness
-// ---------------------------------------------------------------------------
 
 /// R23: a dossier is only complete with all three document sets; the wizard
 /// flags whichever class is missing, in reporting order, with stable i18n
@@ -112,9 +108,7 @@ fn three_class_completeness_end_to_end() {
     assert!(report.missing.is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // R23 (0.9.0) — 数电发票 XML-first parsing
-// ---------------------------------------------------------------------------
 
 /// R23: when the signed structured XML is present it parses deterministically
 /// (OCR skipped entirely) — the golden fixture resolves to its exact fields.
@@ -182,9 +176,7 @@ fn efapiao_sums_multiple_items() {
     assert!((fields.amount_cny - 4000.4).abs() < 1e-9);
 }
 
-// ---------------------------------------------------------------------------
 // R35 — sub-installation heat & waste-gas balance
-// ---------------------------------------------------------------------------
 
 /// R35 / Annex IV Sec 3: one physical S1→S2 transfer is two balance records —
 /// +attributed_tco2e on the exporting side, −attributed_tco2e on the

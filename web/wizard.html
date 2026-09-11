@@ -431,7 +431,6 @@ input[type=file]{display:none}
 
 <script>
 "use strict";
-// ---------- i18n ----------
 // The dictionaries between the markers are GENERATED from locales/*.json
 // (the `ui.*` keys, prefix stripped) — never edit this block by hand.
 // Edit the locale files, then run: cargo run --bin regen-wizard
@@ -1024,7 +1023,6 @@ const FIELD_L = {
 const fLabel = k => (FIELD_L[k] ? t(FIELD_L[k]) : k);
 const localize = fields => fields.map(([k, v]) => [k, fLabel(k), v]);
 
-// ---------- regulatory data (pins) ----------
 // R4 default-value mark-ups, Implementing Reg (EU) 2025/2621
 const MARKUP_PCT = { y2026: 10, y2027: 20, y2028plus: 30, fertilisers: 1 };
 function markupPct(y, sector) {
@@ -1043,13 +1041,13 @@ function cbamFactorPct(y) {
   return CBAM_FACTOR_PCT[y] !== undefined ? CBAM_FACTOR_PCT[y] : null;
 }
 
-// ---------- roles (R47 — the role defines the rendered workflow) ----------
 const ROLES = [
   { id: "importer", nameKey: "roleImporter", descKey: "roleImporterDesc" },
   { id: "exporter", nameKey: "roleExporter", descKey: "roleExporterDesc" },
   { id: "trader", nameKey: "roleTrader", descKey: "roleTraderDesc" },
   { id: "verifier", nameKey: "roleVerifier", descKey: "roleVerifierDesc" },
 ];
+// R47: the selected role determines which views render.
 const ROLE_VIEWS = {
   importer: ["dashboard", "consignments", "export"],
   exporter: ["packs"],
@@ -1110,7 +1108,6 @@ function chooseRole(id) {
   renderAll();
 }
 
-// ---------- server bridge (one artifact, two delivery modes) --
 // Served by the binary (http/https), records ALSO persist through the
 // same-origin /api so the declaration export, audit chain and compliance
 // engines see them; from file:// nothing changes (fully local demo). The
@@ -1187,7 +1184,6 @@ function apiHydrate() {
     .catch(() => {});
 }
 
-// ---------- state ----------
 const SEED = 75.36; // first published CBAM certificate price, 2026-04-07
 let cons = JSON.parse(localStorage.getItem("kaimeter.cons") || "[]");
 let ets = JSON.parse(localStorage.getItem("kaimeter.ets") || JSON.stringify({ value: SEED, date: "2026-04-07" }));
@@ -1195,9 +1191,10 @@ let year = 2026;
 // The record the wizard just saved — consumed by the next dropdown render.
 let justSavedId = null;
 
-// Sample CN codes (8-digit) — the full catalog seeds from the Commission
-// workbook when the core lands. Goods descriptions localize through the
-// dictionaries (ui.cn.<code>); here only the sector id remains.
+// Sample CN codes (8-digit). The core's reference tables carry only three
+// codes today, so these are the wizard's own demo set. Goods descriptions
+// localize through the dictionaries (ui.cn.<code>); here only the sector id
+// remains.
 const CN = {
   "72083800": { s: "steel" },
   "73181500": { s: "steel" },
@@ -1267,7 +1264,6 @@ function exposureFor(importYear, rulesYear) {
   };
 }
 
-// ---------- e-fapiao parsing (R23 demo; OCR is NOT in scope — R16/R22) ----------
 const EFAPIAO_MAP = {
   "发票号码": "invNo", "开票日期": "invDate", "购买方名称": "buyerName",
   "统一社会信用代码": "buyerTaxId", "项目名称": "item", "规格型号": "spec",
@@ -1286,6 +1282,7 @@ function normalizeEfapiao(k, v) {
   if (k === "unit") return { "千瓦时": "kWh" }[v] || v;
   return v;
 }
+// R23: e-fapiao demo parser, text-based. OCR is out of scope (R16/R22).
 function parseEfapiao(text) {
   const out = {};
   if (!text) return out;
@@ -1357,7 +1354,6 @@ function prefillFromProduction() {
   updateNav();
 }
 
-// ---------- wizard state ----------
 let wiz = null; // {mode, step, docs:{energy:[rec],materials:[],production:[]}, f, verified, draft}
 // doc record: {name, parsed, fields:{...}}
 function openWizard() {
@@ -1700,7 +1696,6 @@ $("#wizNext").addEventListener("click", () => {
 $("#wizBack").addEventListener("click", () => { if (wiz && wiz.step > 1) { wiz.step--; renderWizard(); } });
 $("#wizCancel").addEventListener("click", closeWizard);
 
-// ---------- views ----------
 function setActiveView(v) {
   currentView = v;
   document.querySelectorAll(".view").forEach(s => s.classList.remove("active"));

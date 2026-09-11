@@ -10,9 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::customs::{classify, counts_toward_net_mass, CbamStatus};
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // SAD/H1 bulk import (R15)
-// ---------------------------------------------------------------------------
 
 /// One parsed row of a SAD/H1 export (single administrative document).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,7 +34,6 @@ pub struct SadRow {
 /// already holds).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClassifiedImport {
-    /// The parsed SAD row.
     pub row: SadRow,
     /// The Box 37 classification (`customs::classify`).
     pub status: CbamStatus,
@@ -181,9 +178,7 @@ pub fn classify_imports(rows: &[SadRow]) -> Result<Vec<ClassifiedImport>, Domain
         .collect()
 }
 
-// ---------------------------------------------------------------------------
 // SAD field normalization + hand-rolled XML scanning (no xml/csv crates)
-// ---------------------------------------------------------------------------
 
 /// Accepted element spellings per SAD box, tried in order.
 const CN_TAGS: &[&str] = &["CommodityCode", "GoodsItemCommodityCode"];
@@ -384,9 +379,7 @@ fn normalize_date(field: &str, raw: &str) -> Result<String, String> {
     Ok(format!("{y}-{m}-{d}"))
 }
 
-// ---------------------------------------------------------------------------
 // Operator-ID mapping (R36)
-// ---------------------------------------------------------------------------
 
 /// A third-country installation operator's Registry registration record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -431,9 +424,7 @@ pub fn map_operator(
     })
 }
 
-// ---------------------------------------------------------------------------
 // EORI/VIES offline format validation (R14/R15 build note)
-// ---------------------------------------------------------------------------
 
 /// Validate an EORI number offline by format: two-letter country prefix
 /// followed by the national-format body (length/alphabet rules cached

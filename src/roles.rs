@@ -140,13 +140,11 @@ impl RoleSelection {
         Ok(())
     }
 
-    /// The active role.
     #[must_use]
     pub fn active(&self) -> Role {
         self.active
     }
 
-    /// All configured roles (insertion order).
     #[must_use]
     pub fn roles(&self) -> &[Role] {
         &self.roles

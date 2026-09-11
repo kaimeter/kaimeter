@@ -18,9 +18,7 @@ use kaimeter_core::liability::{
     workspace_db_path, DeclarantRollup, GroupHierarchy, LiabilityTag, SiteRecord,
 };
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /// Fresh scratch data directory per test tag.
 fn scratch_dir(tag: &str) -> PathBuf {
@@ -73,9 +71,7 @@ fn close(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
 }
 
-// ---------------------------------------------------------------------------
 // R25 — per-EORI physical tenant isolation
-// ---------------------------------------------------------------------------
 
 /// R25: tenant isolation is PHYSICAL — one SQLite file per EORI under
 /// `db/tenants/`, so one ICR never mixes two clients' data. A marker row
@@ -183,9 +179,7 @@ fn rollup_watches_50t_once() {
     assert!(close(rollup_workspaces(&[]), 0.0), "no workspaces, no mass");
 }
 
-// ---------------------------------------------------------------------------
 // R26 — group & multi-installation hierarchy
-// ---------------------------------------------------------------------------
 
 /// R26: each installation ID is the verifier-facing unit; group rollups never
 /// blur site boundaries. The pairing is returned per site in group order;
@@ -242,9 +236,7 @@ fn group_rollup_keeps_site_boundaries() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // R46 — ICR joint-and-several liability tagging (Art 5(2) & 26)
-// ---------------------------------------------------------------------------
 
 /// R46 (Art 5(2) & 26): an ICR filing for an importer that LACKS
 /// authorised-declarant status carries joint and several liability; a

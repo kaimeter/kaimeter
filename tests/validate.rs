@@ -14,9 +14,7 @@ use kaimeter_core::domain::lookup::Lookup;
 use kaimeter_core::domain::types::{Consignment, DeterminationBasis, Dossier, MaterialRecord};
 use kaimeter_core::validate::{self, Severity, Unit, ValidationIssue};
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /// Open a scratch SQLite database, run migrations, and build a [`Lookup`]
 /// over the seeded reference tables (73181500 STEEL route EF, 76041010
@@ -68,9 +66,7 @@ fn severity_of(issues: &[ValidationIssue], code: &str) -> Severity {
         .unwrap_or_else(|| panic!("issue {code} not found in {issues:?}"))
 }
 
-// ---------------------------------------------------------------------------
 // 1. Unit conversion (R12: units must be normalized, never guessed)
-// ---------------------------------------------------------------------------
 
 /// R12: incoming quantities in mixed units must convert along exact
 /// power-of-ten scalings (1000 kg per t, 1000 kWh per MWh); identity is
@@ -144,9 +140,7 @@ fn unit_conversion_matrix_pinned() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 2. Consignment validation (R12: completeness + reference-data plausibility)
-// ---------------------------------------------------------------------------
 
 /// R12: a consignment on a seeded CN code with well-formed fields raises no
 /// issues; unknown/malformed CN codes, missing carbon-price country,
@@ -240,9 +234,7 @@ fn consignment_flags_unknown_cn_and_missing_country() {
     assert_eq!(severity_of(&issues, "INVALID_DATE"), Severity::Error);
 }
 
-// ---------------------------------------------------------------------------
 // 3. Dossier mass balance (R12 plausibility; R16: the human verifies)
-// ---------------------------------------------------------------------------
 
 /// R12 + R16: recorded material inputs materially below the consignment
 /// output mass are flagged (outputs cannot exceed inputs) — a Warning for
@@ -332,9 +324,7 @@ fn dossier_mass_balance_flags_input_below_output() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 4. Stable i18n message keys (locales render issues, not raw codes)
-// ---------------------------------------------------------------------------
 
 /// Every issue emitted by every scenario carries the stable key
 /// `validate.issue.<code lowercase>` so localized surfaces can depend on it.

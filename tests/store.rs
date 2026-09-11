@@ -42,10 +42,8 @@ fn consignment(cn: &str, kg: f64, date: &str) -> Consignment {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Consignment records (R15 status lifecycle, R25 declarant workspace, R27
 // retention horizon)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn consignment_round_trip_with_status_eori_and_retention() {
@@ -108,9 +106,7 @@ fn consignment_insert_carries_optional_carbon_price_columns() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Audit trail (R10): append-only hash chain over the DB
-// ---------------------------------------------------------------------------
 
 #[test]
 fn audit_chain_append_verify_root_and_tamper_detection() {
@@ -181,9 +177,7 @@ fn audit_root_of_empty_chain_is_genesis() {
     store::verify_audit(&storage).expect("empty chain verifies");
 }
 
-// ---------------------------------------------------------------------------
 // Attachments (R16): the human-verification gate, then metadata-only rows
-// ---------------------------------------------------------------------------
 
 #[test]
 fn attachment_gate_blocks_unverified_and_round_trips_verified() {
@@ -223,9 +217,7 @@ fn attachment_gate_blocks_unverified_and_round_trips_verified() {
         .is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // Dossiers (R23): per-class upserts + the completeness flag
-// ---------------------------------------------------------------------------
 
 #[test]
 fn dossier_upsert_tracks_completeness_flag() {
@@ -300,9 +292,7 @@ fn dossier_upsert_tracks_completeness_flag() {
     assert!(dossier::completeness(&d).complete);
 }
 
-// ---------------------------------------------------------------------------
 // Certificate events (R24): year-scoped SUM by kind
-// ---------------------------------------------------------------------------
 
 #[test]
 fn certificate_position_sums_by_year() {
@@ -328,9 +318,7 @@ fn certificate_position_sums_by_year() {
     assert!((p2026 - 999.0).abs() < 1e-9);
 }
 
-// ---------------------------------------------------------------------------
 // Role selection (R47): persisted through the settings table
-// ---------------------------------------------------------------------------
 
 #[test]
 fn role_selection_persists_through_settings() {
@@ -353,9 +341,7 @@ fn role_selection_persists_through_settings() {
     assert_eq!(roles::restore(&stored).expect("restore").roles().len(), 2);
 }
 
-// ---------------------------------------------------------------------------
 // ETS price cache (R7/R14): single-row upsert
-// ---------------------------------------------------------------------------
 
 #[test]
 fn price_cache_upsert_overwrites() {
@@ -382,9 +368,7 @@ fn price_cache_upsert_overwrites() {
     assert_eq!(rows.as_deref(), Some("1"));
 }
 
-// ---------------------------------------------------------------------------
 // Declarations (R9/R30): file + schema version + chain root at submission
-// ---------------------------------------------------------------------------
 
 #[test]
 fn declaration_save_persists_file_and_root() {
@@ -424,9 +408,7 @@ fn declaration_save_persists_file_and_root() {
     assert_eq!(chain, root, "the audit root at submission is frozen (R10)");
 }
 
-// ---------------------------------------------------------------------------
 // Authorisation status + data-request outbox (R42/R11/R36)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn authorisation_status_round_trips() {

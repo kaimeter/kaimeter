@@ -24,16 +24,13 @@ use sha2::{Digest, Sha256};
 
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // R9 — declaration-ready file
-// ---------------------------------------------------------------------------
 
 /// One declaration field: a canonical name and its JSON value.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeclarationField {
     /// Canonical field name (e.g. `cn_code`, `net_mass_kg`).
     pub name: String,
-    /// The field value.
     pub value: Value,
 }
 
@@ -82,9 +79,7 @@ pub fn build_declaration(fields: &[DeclarationField]) -> Result<Value, DomainErr
     Ok(Value::Object(object))
 }
 
-// ---------------------------------------------------------------------------
 // R21 — per-field masking + self-audit preview
-// ---------------------------------------------------------------------------
 
 /// Per-field masking policy for trader packs (R21): the buyer sees
 /// compliance data, never the trading book.
@@ -159,9 +154,7 @@ pub fn apply_masks(
         .collect()
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — Merkle commitment (R21)
-// ---------------------------------------------------------------------------
 
 /// Leaf hash convention (documented, pinned by tests): the input string is
 /// hashed as raw bytes with a `0x00` domain prefix —
@@ -218,11 +211,9 @@ pub fn merkle_root(leaves: &[String]) -> String {
 /// their side (true = sibling is on the right).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MerkleProof {
-    /// Index of the proven leaf.
     pub leaf_index: usize,
     /// (sibling hash, sibling_is_right) pairs, leaf level first.
     pub siblings: Vec<(String, bool)>,
-    /// The root the proof commits to.
     pub root: String,
 }
 
@@ -285,9 +276,7 @@ pub fn verify_inclusion(leaf: &str, proof: &MerkleProof) -> bool {
     hex::encode(current) == proof.root
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — content + VP serialization (R21)
-// ---------------------------------------------------------------------------
 
 /// The sealed pack's compliance payload: emissions values + an anonymized
 /// installation ID — no supplier identity, no pricing (blind pass-through).
@@ -606,9 +595,7 @@ pub fn verify_vc_jwt(jwt: &str) -> Result<PackContent, DomainError> {
     Ok(content)
 }
 
-// ---------------------------------------------------------------------------
 // R30 — pre-flight schema validation
-// ---------------------------------------------------------------------------
 
 /// A version-tagged schema entry (versioned schemas are retained
 /// side-by-side so historical dossiers re-validate against their
@@ -626,7 +613,6 @@ pub struct SchemaEntry {
 /// One schema violation found at pre-flight.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Violation {
-    /// The offending field.
     pub field: String,
     /// What is wrong (`MISSING`, `TYPE`).
     pub code: String,
@@ -703,9 +689,7 @@ pub fn preflight_validate(
     }
 }
 
-// ---------------------------------------------------------------------------
 // Unit tests — complement the contract tests in tests/export.rs
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

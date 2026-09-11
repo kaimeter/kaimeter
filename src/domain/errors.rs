@@ -6,7 +6,6 @@
 //! Every variant carries a stable i18n key (`i18n_key`) so user-facing
 //! surfaces can render localized messages instead of raw `Display` strings.
 
-/// Domain-layer error.
 #[derive(Debug, thiserror::Error)]
 pub enum DomainError {
     /// A CN code must be exactly 8 ASCII digits.
@@ -29,12 +28,7 @@ pub enum DomainError {
     NoDefaultForCnCode(String),
     /// The CN code exists but has no default for this production route.
     #[error("no default value for CN code `{cn}` on production route `{route}`")]
-    NoDefaultForRoute {
-        /// The 8-digit CN code that was looked up.
-        cn: String,
-        /// The production route that had no default.
-        route: String,
-    },
+    NoDefaultForRoute { cn: String, route: String },
     /// Mark-ups apply from 2026 onward.
     #[error("mark-up year out of range: {0} (mark-ups apply from 2026)")]
     MarkupYearOutOfRange(i32),
@@ -53,11 +47,8 @@ pub enum DomainError {
     /// An IPR discharge exceeds the mass of the original import.
     #[error("IPR discharge of {discharged_kg} kg exceeds imported {imported_kg} kg on `{declaration_id}`")]
     DischargeExceedsImport {
-        /// The import declaration discharged against.
         declaration_id: String,
-        /// Imported precursor mass, kg.
         imported_kg: f64,
-        /// Attempted discharge mass, kg.
         discharged_kg: f64,
     },
     /// The ETS price must be a finite, non-negative number.

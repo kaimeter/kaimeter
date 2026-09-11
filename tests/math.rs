@@ -70,9 +70,7 @@ fn precursor(
     }
 }
 
-// ---------------------------------------------------------------------------
 // CBAM factor schedule (R7, Art 10a(1a) ETS Directive)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn regression_cbam_factor_schedule_is_pinned() {
@@ -104,9 +102,7 @@ fn regression_cbam_factor_schedule_is_pinned() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Gross exposure and the Formula A/B toggle (R7, Art 9 deduction order)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn gross_exposure_pinned() {
@@ -185,9 +181,7 @@ fn formula_a_and_b_coincide_when_no_carbon_was_paid() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Annex II indirect scope + Annex IV complex goods (R3)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn indirect_scope_table_pinned() {
@@ -296,9 +290,7 @@ fn complex_goods_yield_example_pinned() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // Consignment embedded emissions: default path with mark-up (R4), actual path
-// ---------------------------------------------------------------------------
 
 #[test]
 fn consignment_default_path_applies_markup() {
@@ -378,9 +370,7 @@ fn consignment_actual_path_multiplies_intensity_by_net_tonnes() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // 50 t de-minimis tracker (R1, Art 2a + Annex VII pt 1)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn de_minimis_crossing_latches_for_the_year() {

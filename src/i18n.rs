@@ -156,7 +156,8 @@ impl I18n {
         Ok(i18n)
     }
 
-    /// Resolve a message key for a locale code.
+    /// Resolve a message key. Errors rather than falling back; use
+    /// [`I18n::t_or_en`] where a missing key must not surface.
     pub fn t(&self, locale: &str, key: &str) -> Result<&str, I18nError> {
         self.locales
             .get(locale)
@@ -167,7 +168,7 @@ impl I18n {
             .ok_or_else(|| I18nError::MissingKey(key.to_string(), locale.to_string()))
     }
 
-    /// Resolve a message key, falling back to `en` when missing.
+    /// Resolve a message key, falling back to `en`, then to the key itself.
     pub fn t_or_en(&self, locale: &str, key: &str) -> String {
         self.t(locale, key)
             .or_else(|_| self.t("en", key))
@@ -181,7 +182,6 @@ impl I18n {
         self.termbase.term(term, locale).unwrap_or(term).to_string()
     }
 
-    /// Loaded locale codes, sorted.
     pub fn locale_codes(&self) -> Vec<String> {
         self.locales.keys().cloned().collect()
     }

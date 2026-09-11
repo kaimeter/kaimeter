@@ -53,9 +53,7 @@ use crate::validate::{validate_consignment, Severity};
 /// the official registry schemas remain a 1.0 verification item).
 const DECLARATION_SCHEMA_VERSION: &str = "2027.1";
 
-// ---------------------------------------------------------------------------
 // Router
-// ---------------------------------------------------------------------------
 
 /// Build the `/api` sub-router (mounted by `crate::http::router`).
 pub fn router() -> Router<AppState> {
@@ -86,9 +84,7 @@ pub fn router() -> Router<AppState> {
         .route("/price", get(get_price_api).put(put_price))
 }
 
-// ---------------------------------------------------------------------------
 // Error surface
-// ---------------------------------------------------------------------------
 
 /// One API error: HTTP status plus the localized-message envelope.
 struct ApiError {
@@ -161,9 +157,7 @@ impl IntoResponse for ApiError {
 
 type ApiResult = Result<Response, ApiError>;
 
-// ---------------------------------------------------------------------------
 // Shared helpers
-// ---------------------------------------------------------------------------
 
 /// Current UTC time as ISO-8601 `YYYY-MM-DDTHH:MM:SSZ` (audit timestamps),
 /// computed through the calendar's frozen day core — no clock dependency
@@ -229,9 +223,7 @@ fn query_i32(q: &BTreeMap<String, String>, name: &str) -> Result<i32, ApiError> 
     })
 }
 
-// ---------------------------------------------------------------------------
 // Reference data
-// ---------------------------------------------------------------------------
 
 /// `GET /api/reference/cn-codes` — the seeded CN catalog.
 async fn reference_cn_codes(State(state): State<AppState>) -> ApiResult {
@@ -276,9 +268,7 @@ async fn reference_defaults(
     Ok((StatusCode::OK, Json(Value::Array(defaults))).into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Consignments
-// ---------------------------------------------------------------------------
 
 /// POST body: a consignment plus the two persistence-side optionals.
 #[derive(Deserialize)]
@@ -458,9 +448,7 @@ async fn import_sad(State(state): State<AppState>, body: Bytes) -> ApiResult {
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // De-minimis (R1)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/deminimis?year=2026` — the 50 t calendar-year net-mass tracker
 /// over that year's LIABLE consignments only (R15: deferred/tracked/excluded
@@ -489,9 +477,7 @@ async fn deminimis(
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Exposure (R3/R4/R7)
-// ---------------------------------------------------------------------------
 
 /// Resolve the ETS price for a projection: the explicit query parameter wins,
 /// then the cached price with its staleness flag; nowhere → 409 (R7: the
@@ -613,9 +599,7 @@ async fn exposure(
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Calendar (R14/R24/R34)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/calendar?year=2027` — the year's fixed obligation dates with
 /// their Brussels UTC offsets and i18n label keys.
@@ -642,9 +626,7 @@ async fn calendar(
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Quarterly holding monitor (R24)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/holding?year=2027&quarter=1` — the quarter-end certificate
 /// position. The R24 basis is Annex IV default values WITHOUT the mark-up
@@ -700,9 +682,7 @@ async fn holding(
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Role selection (R47)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/role` — the stored selection, or `null` before the first run.
 async fn get_role(State(state): State<AppState>) -> ApiResult {
@@ -782,9 +762,7 @@ async fn delete_role(State(state): State<AppState>) -> ApiResult {
     Ok((StatusCode::OK, Json(Value::Null)).into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Declaration export (R9/R21/R30)
-// ---------------------------------------------------------------------------
 
 /// One masking entry: a bare field name (redact) or a name + policy object.
 #[derive(Deserialize)]
@@ -992,15 +970,15 @@ async fn export_declaration(State(state): State<AppState>, body: Bytes) -> ApiRe
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Sealed data packs (R21): Ed25519-sealed W3C Verifiable Presentations
-// ---------------------------------------------------------------------------
 
 /// Settings key holding the local pack-signing key (Ed25519 seed, hex).
 /// Generated once on this machine; the signer identity in the pack is
 /// `did:key:<public_key_hex>` derived from it — no central registration
-/// (R21). Vault-sealed key storage is a tracked 1.0 hardening item; the demo
-/// ships the seed in the local SQLite settings table.
+/// (R21).
+///
+/// The seed is stored as plaintext in the local SQLite settings table. The
+/// vault in [`crate::vault`] can seal it, but nothing calls the vault yet.
 const PACK_SIGNING_KEY_SETTING: &str = "pack_signing_key";
 
 /// The local Ed25519 pack-signing key: read from settings, generated on
@@ -1181,9 +1159,7 @@ async fn verify_pack_api(State(state): State<AppState>, body: Bytes) -> ApiResul
     }
 }
 
-// ---------------------------------------------------------------------------
 // Audit trail (R10)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/audit?subject=consignment:3` — events (optionally scoped to one
 /// subject), the chain root, and the end-to-end integrity verdict.
@@ -1247,9 +1223,7 @@ async fn audit_api(
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // Attachments (R16)
-// ---------------------------------------------------------------------------
 
 /// The attachment upload body: base64 content, metadata, and the mandatory
 /// human-verification attestation.
@@ -1304,9 +1278,7 @@ async fn create_attachment(State(state): State<AppState>, body: Bytes) -> ApiRes
         .into_response())
 }
 
-// ---------------------------------------------------------------------------
 // ETS price cache (R7/R14)
-// ---------------------------------------------------------------------------
 
 /// `GET /api/price` — the cached price with its flags, or `null`.
 async fn get_price_api(State(state): State<AppState>) -> ApiResult {

@@ -17,42 +17,33 @@ use crate::domain::errors::DomainError;
 use crate::domain::markups;
 use crate::domain::types::{CnCode, Consignment, DefaultValue, DeterminationBasis, Sector};
 
-// ---------------------------------------------------------------------------
 // CBAM factor schedule (R7, Art 10a(1a) ETS Directive)
-// ---------------------------------------------------------------------------
 
 /// CBAM factor (the obligation share) for a calendar year, as a fraction of
 /// embedded emissions: 2.5% (2026), 5% (2027), 10% (2028), 22.5% (2029),
 /// 48.5% (2030), 61% (2031), 73.5% (2032), 86% (2033), 100% (2034 onward).
 ///
-/// REGULATORY PIN — values are law (Art 10a(1a)); the schedule ships as a
-/// data table so a Phase-5 adoption re-parameterizes data, not code.
+/// Regulatory pin (Art 10a(1a) ETS Directive): these values are law.
 ///
 /// # Errors
 ///
 /// [`DomainError::CbamFactorYearOutOfRange`] before 2026.
 pub fn cbam_factor(year: i32) -> Result<f64, DomainError> {
-    // REGULATORY PIN — Art 10a(1a) ETS Directive. Each arm is one year of
-    // the free-allocation phase-out; a Phase-5 adoption re-parameterizes
-    // this table (data), it does not change the formula.
     match year {
-        2026 => Ok(0.025), // 2026: 2.5 %
-        2027 => Ok(0.05),  // 2027: 5 %
-        2028 => Ok(0.10),  // 2028: 10 %
-        2029 => Ok(0.225), // 2029: 22.5 %
-        2030 => Ok(0.485), // 2030: 48.5 %
-        2031 => Ok(0.61),  // 2031: 61 %
-        2032 => Ok(0.735), // 2032: 73.5 %
-        2033 => Ok(0.86),  // 2033: 86 %
-        // 2034 and every later year: fully phased in at 100 %.
+        2026 => Ok(0.025),
+        2027 => Ok(0.05),
+        2028 => Ok(0.10),
+        2029 => Ok(0.225),
+        2030 => Ok(0.485),
+        2031 => Ok(0.61),
+        2032 => Ok(0.735),
+        2033 => Ok(0.86),
         y if y >= 2034 => Ok(1.0),
         _ => Err(DomainError::CbamFactorYearOutOfRange(year)),
     }
 }
 
-// ---------------------------------------------------------------------------
 // Formula A/B toggle (R7, Art 9 deduction order)
-// ---------------------------------------------------------------------------
 
 /// The Art 9 carbon-price deduction order, parameterized as data so the
 /// adopted implementing act flips it with no code change.
@@ -103,9 +94,7 @@ pub fn net_exposure(
     })
 }
 
-// ---------------------------------------------------------------------------
 // Embedded emissions (R3)
-// ---------------------------------------------------------------------------
 
 /// Which Annex II indirect-emissions scope applies to a sector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -125,7 +114,6 @@ pub enum IndirectScope {
 /// own regime; treat it as direct-only here).
 #[must_use]
 pub fn indirect_scope(sector: Sector) -> IndirectScope {
-    // Annex II indirect-emissions scope table (R3).
     match sector {
         Sector::Cement | Sector::Fertilisers => IndirectScope::Included,
         Sector::Steel => IndirectScope::SteelOrePrecursor,
@@ -263,9 +251,7 @@ pub fn used_basis(consignment: &Consignment) -> DeterminationBasis {
     consignment.determination_basis
 }
 
-// ---------------------------------------------------------------------------
 // 50 t de-minimis tracker (R1)
-// ---------------------------------------------------------------------------
 
 /// Calendar-year-to-date net-mass tracker per declarant, aggregated across
 /// ALL CBAM goods (R1, Art 2a + Annex VII pt 1).
@@ -338,9 +324,7 @@ impl Default for DeMinimisTracker {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Private helpers
-// ---------------------------------------------------------------------------
 
 /// Mirror of `Consignment::validate`'s mass rule: finite and >= 0.
 fn valid_mass(kg: f64) -> bool {

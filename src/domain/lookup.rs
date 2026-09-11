@@ -104,13 +104,11 @@ impl Lookup {
         Ok(lookup)
     }
 
-    /// The CN code record, if seeded.
     #[must_use]
     pub fn cn_code(&self, code: &str) -> Option<&CnCode> {
         self.cn_codes.get(code)
     }
 
-    /// All seeded CN codes.
     #[must_use]
     pub fn cn_codes(&self) -> Vec<&CnCode> {
         self.cn_codes.values().collect()
@@ -145,7 +143,6 @@ impl Lookup {
         })
     }
 
-    /// The installation record, if seeded.
     #[must_use]
     pub fn installation(&self, id: &str) -> Option<&Installation> {
         self.installations.get(id)

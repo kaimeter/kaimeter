@@ -12,25 +12,21 @@ pub const KWH_PER_MWH: f64 = 1000.0;
 /// Kilograms per metric tonne.
 pub const KG_PER_TONNE: f64 = 1000.0;
 
-/// Convert kilowatt-hours to megawatt-hours.
 #[must_use]
 pub fn kwh_to_mwh(kwh: f64) -> f64 {
     kwh / KWH_PER_MWH
 }
 
-/// Convert megawatt-hours to kilowatt-hours.
 #[must_use]
 pub fn mwh_to_kwh(mwh: f64) -> f64 {
     mwh * KWH_PER_MWH
 }
 
-/// Convert kilograms to metric tonnes.
 #[must_use]
 pub fn kg_to_tonnes(kg: f64) -> f64 {
     kg / KG_PER_TONNE
 }
 
-/// Convert metric tonnes to kilograms.
 #[must_use]
 pub fn tonnes_to_kg(tonnes: f64) -> f64 {
     tonnes * KG_PER_TONNE

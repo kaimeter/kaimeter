@@ -153,9 +153,7 @@ impl std::str::FromStr for DeterminationBasis {
 pub struct Installation {
     /// Stable installation identifier.
     pub id: String,
-    /// Operator-visible name.
     pub name: String,
-    /// Physical address.
     pub address: String,
     /// Production routes available at the installation.
     pub production_routes: Vec<String>,
@@ -263,7 +261,6 @@ pub struct MaterialRecord {
     pub cn_code: String,
     /// Net mass in kilograms.
     pub net_mass_kg: f64,
-    /// Production route, if known.
     pub production_route: Option<String>,
 }
 
@@ -279,7 +276,6 @@ pub struct ProductionRecord {
 /// A CBAM default value for one (CN code, production route) pair.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DefaultValue {
-    /// The CN code the default belongs to.
     pub cn_code: CnCode,
     /// Production route identifier (e.g. `EF`, `PRIMARY`, `NATURAL_GAS`).
     pub production_route: String,
@@ -333,7 +329,6 @@ pub struct Completeness {
 /// A dossier: one consignment correlated with its three document classes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Dossier {
-    /// The consignment the documents belong to.
     pub consignment: Consignment,
     /// Energy/fuel document class (optional until provided).
     pub energy: Option<EnergyRecord>,

@@ -45,16 +45,12 @@ fn last_insert_rowid(storage: &dyn Storage) -> Result<i64, DomainError> {
         .map_err(|e| DomainError::Storage(format!("last_insert_rowid: {e}")))
 }
 
-// ---------------------------------------------------------------------------
 // Consignments (R15 status lifecycle, R25 declarant workspace, R27 retention)
-// ---------------------------------------------------------------------------
 
 /// A consignment row joined with its CBAM lifecycle columns.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct StoredConsignment {
-    /// The database row id.
     pub row_id: i64,
-    /// The domain consignment payload.
     pub consignment: Consignment,
     /// CBAM status token (`LIABLE`, `DEFERRED`, ... — R15).
     pub status: String,
@@ -104,7 +100,9 @@ pub fn insert_consignment(
         consignment.import_date.trim().to_string(),
         consignment.determination_basis.as_str().to_string(),
         status.trim().to_string(),
-        "NONE".to_string(), // R46 default; joint-and-several is set via a later update
+        // R46: consignments are always inserted as NONE. No code path promotes
+        // a row to JOINT_AND_SEVERAL yet, so the column is write-only.
+        "NONE".to_string(),
         purge_after,
     ];
     if let Some(price) = consignment.carbon_price_eur_per_tco2e {
@@ -205,9 +203,7 @@ pub fn list_consignments(
     Ok(out)
 }
 
-// ---------------------------------------------------------------------------
 // Audit trail (R10): append-only hash chain persisted in `audit_events`
-// ---------------------------------------------------------------------------
 
 /// Append one event to the persisted hash chain: the previous hash and
 /// sequence number are read from the last stored row (genesis when empty) so
@@ -324,10 +320,8 @@ pub fn audit_root(storage: &dyn Storage) -> Result<String, DomainError> {
         .map(|hash| hash.unwrap_or_else(|| GENESIS_PREV_HASH.to_string()))
 }
 
-// ---------------------------------------------------------------------------
 // Attachments (R16): the R16 gate fires in `new_attachment`; the store only
 // persists its output — hash + metadata, never the document bytes
-// ---------------------------------------------------------------------------
 
 /// Persist one verified attachment record against a subject
 /// (`consignment:<id>` / dossier id). Accepts nothing unverified by
@@ -392,9 +386,7 @@ pub fn list_attachments(
     Ok(out)
 }
 
-// ---------------------------------------------------------------------------
 // Dossiers (R23/R35): per-class JSON upserts + the completeness flag
-// ---------------------------------------------------------------------------
 
 /// Map a dossier field name to its column (whitelist: no dynamic SQL from
 /// user input).
@@ -552,9 +544,7 @@ pub fn get_dossier(
     Ok(Some((complete, payload)))
 }
 
-// ---------------------------------------------------------------------------
 // Certificate events (R24): kind-scoped, year-scoped sums
-// ---------------------------------------------------------------------------
 
 /// Record one certificate event (`PURCHASED`, `CANCELLED`, `SURRENDERED`,
 /// `BUYBACK_REQUESTED`) and return its row id.
@@ -625,9 +615,7 @@ pub fn certificate_position(
     Ok((sum("PURCHASED")?, sum("CANCELLED")?, sum("SURRENDERED")?))
 }
 
-// ---------------------------------------------------------------------------
 // Authorised-declarant status (R42) and guarantee hooks
-// ---------------------------------------------------------------------------
 
 /// Store the authorised-declarant status for an EORI (R42: `ACTIVE`,
 /// `SUSPENDED`, `REVOKED` — the CHECK constraint is the authority).
@@ -664,9 +652,7 @@ pub fn get_authorisation(storage: &dyn Storage, eori: &str) -> Result<Option<Str
         .map_err(storage_err)
 }
 
-// ---------------------------------------------------------------------------
 // ETS price cache (R7/R14): the single `id = 1` row
-// ---------------------------------------------------------------------------
 
 /// Upsert the ETS price cache (the table admits exactly one row, `id = 1`):
 /// price, observation date, manual-entry and staleness flags.
@@ -728,9 +714,7 @@ pub fn get_price(storage: &dyn Storage) -> Result<Option<(f64, String, bool, boo
     )))
 }
 
-// ---------------------------------------------------------------------------
 // Data-request outbox (R11/R36)
-// ---------------------------------------------------------------------------
 
 /// One queued (or drained) data request row.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -807,9 +791,7 @@ pub fn mark_sent(storage: &dyn Storage, id: &str) -> Result<(), DomainError> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 // Declarations (R9/R30/R10)
-// ---------------------------------------------------------------------------
 
 /// Save a declaration-ready file with its schema version and the audit chain
 /// root at submission (R9/R30/R10). Re-saving a declaration id replaces the
@@ -838,11 +820,9 @@ pub fn save_declaration(
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 // Settings (R47 and beyond): the settings table as a flat local key/value
 // store — role selection, the local pack-signing key, and future device
 // configuration all live here
-// ---------------------------------------------------------------------------
 
 const ROLE_SETTING_KEY: &str = "role_selection";
 

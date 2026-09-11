@@ -12,9 +12,7 @@ use sha2::{Digest, Sha256};
 
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // Hash-chained audit trail (R10) — frozen core
-// ---------------------------------------------------------------------------
 
 /// One append-only audit event. `hash` covers the full event including the
 /// previous event's hash, so any post-hoc edit breaks the chain.
@@ -163,9 +161,7 @@ pub fn sha256_hex(data: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
-// ---------------------------------------------------------------------------
 // Attachments (R16) — agent-owned
-// ---------------------------------------------------------------------------
 
 /// A source document attached to a record as provenance. The document never
 /// leaves the device (R16/R22); only its hash and metadata are stored.
@@ -218,9 +214,7 @@ pub fn new_attachment(
     })
 }
 
-// ---------------------------------------------------------------------------
 // Retention & purge (R27) — agent-owned
-// ---------------------------------------------------------------------------
 
 /// Retention status of one record under the Art 14 four-year rule.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

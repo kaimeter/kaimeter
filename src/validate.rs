@@ -19,9 +19,7 @@ use crate::domain::units;
 /// imports dated earlier are flagged for review, not rejected.
 const DEFINITIVE_REGIME_START_YEAR: i32 = 2026;
 
-// ---------------------------------------------------------------------------
 // Issues
-// ---------------------------------------------------------------------------
 
 /// Severity of a validation finding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,9 +44,7 @@ pub struct ValidationIssue {
     pub severity: Severity,
 }
 
-// ---------------------------------------------------------------------------
 // Unit conversion
-// ---------------------------------------------------------------------------
 
 /// Supported data-entry units (R12 unit validation).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -110,9 +106,7 @@ pub fn convert_units(value: f64, from: Unit, to: Unit) -> Result<f64, DomainErro
     }
 }
 
-// ---------------------------------------------------------------------------
 // Consignment validation
-// ---------------------------------------------------------------------------
 
 /// Validate one consignment: domain invariants, reference-data plausibility
 /// (CN code exists, production route known), and completeness of the
@@ -172,9 +166,7 @@ pub fn validate_consignment(consignment: &Consignment, lookup: &Lookup) -> Vec<V
     issues
 }
 
-// ---------------------------------------------------------------------------
 // Dossier mass balance
-// ---------------------------------------------------------------------------
 
 /// Plausibility of a dossier's material masses against its output: consumed
 /// precursor masses materially below the finished-output mass, negative
@@ -250,9 +242,7 @@ pub fn validate_dossier_mass_balance(dossier: &Dossier) -> Vec<ValidationIssue> 
     issues
 }
 
-// ---------------------------------------------------------------------------
 // Internals
-// ---------------------------------------------------------------------------
 
 /// Build one finding with the stable i18n key
 /// `validate.issue.<code lowercase>`.

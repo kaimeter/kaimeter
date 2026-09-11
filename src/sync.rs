@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // R7/R14 — ETS price cache
-// ---------------------------------------------------------------------------
 
 /// One ETS price observation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,7 +34,6 @@ pub struct CachedPrice {
 }
 
 impl CachedPrice {
-    /// Construct a cache entry that is fresh by definition (just synced).
     #[must_use]
     pub fn fresh(price: EtsPrice) -> Self {
         Self {
@@ -102,16 +99,13 @@ impl EtsPriceCache {
         Ok(())
     }
 
-    /// The price to project with, when one exists.
     #[must_use]
     pub fn current(&self) -> Option<CachedPrice> {
         self.entry.clone()
     }
 }
 
-// ---------------------------------------------------------------------------
 // R11 — localized data requests
-// ---------------------------------------------------------------------------
 
 /// The data a declarant needs from a mill (R11): process route, electricity
 /// mix, supplier inputs, mass per CN code.
@@ -123,7 +117,6 @@ pub struct DataRequest {
     pub locale: String,
     /// The mill/supplier this request goes to.
     pub recipient: String,
-    /// CN codes the request covers.
     pub cn_codes: Vec<String>,
     /// Outbox state.
     pub queued: bool,
@@ -180,9 +173,7 @@ pub fn drain_outbox(
     todo!("0.6.0: outbox drain (owned; used by the web layer)")
 }
 
-// ---------------------------------------------------------------------------
 // R36 — registry status refresh
-// ---------------------------------------------------------------------------
 
 /// A registry status snapshot (operator registration or declarant
 /// authorisation) with its refresh state.

@@ -11,9 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::calendar::Quarter;
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // R24 — quarterly certificate-position monitor
-// ---------------------------------------------------------------------------
 
 /// Certificate-position snapshot for one quarter-end check.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,9 +102,7 @@ pub fn shortfall_tco2e(position: &HoldingPosition) -> f64 {
     (position.required_tco2e - position.held_tco2e).max(0.0)
 }
 
-// ---------------------------------------------------------------------------
 // R32 — penalty exposure engine
-// ---------------------------------------------------------------------------
 
 /// Penalty exposure computed in euros, before it happens.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -192,9 +188,7 @@ pub fn unauthorised_import_penalty(
     })
 }
 
-// ---------------------------------------------------------------------------
 // R39 — Member-State penalty variations (jurisdiction table)
-// ---------------------------------------------------------------------------
 
 /// One jurisdiction's penalty framework descriptor (Art 26(2): national
 /// rules apply to other non-compliance). Ships as versioned data.
@@ -231,9 +225,7 @@ pub fn jurisdiction_penalty<'a>(
         })
 }
 
-// ---------------------------------------------------------------------------
 // R37 — NCA financial guarantee projection
-// ---------------------------------------------------------------------------
 
 /// Projection of the NCA financial security required from declarants not
 /// established for the two prior financial years (IR 2025/2549, Art 4–6).
@@ -257,9 +249,7 @@ pub fn guarantee_sufficient(projection: &GuaranteeProjection) -> bool {
     projection.lodged_eur >= projection.required_eur
 }
 
-// ---------------------------------------------------------------------------
 // R40 — NCA communications log
-// ---------------------------------------------------------------------------
 
 /// One structured NCA communication record (Arts 11 & 17).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -290,9 +280,7 @@ impl NcaCommunication {
     }
 }
 
-// ---------------------------------------------------------------------------
 // R42 — authorised-declarant status lifecycle
-// ---------------------------------------------------------------------------
 
 /// Authorised-declarant status (Art 17(8)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

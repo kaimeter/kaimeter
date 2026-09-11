@@ -31,13 +31,11 @@ const EFAPIAO_FIXTURE: &str = include_str!(concat!(
     "/samples/energy-bills/efapiao-electricity-sample.txt"
 ));
 
-// ---------------------------------------------------------------------------
 // 1. Offline by construction (R22) + the wizard ↔ core integration contract:
 //    the wizard never touches a third party and never phones home; the only
 //    network surface allowed is same-origin `/api/...` persistence calls
 //    (fire-and-forget, silent on failure) when served by the binary. From
 //    `file://` the artifact is fully local.
-// ---------------------------------------------------------------------------
 
 #[test]
 fn wizard_contains_no_network_surface() {
@@ -94,9 +92,7 @@ fn wizard_is_a_single_self_contained_file() {
     assert!(!WIZARD.contains("src="), "no external asset references");
 }
 
-// ---------------------------------------------------------------------------
 // 2. First-run role selection — four personas, resettable (R47)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn role_selection_covers_all_four_personas() {
@@ -126,9 +122,7 @@ fn role_is_persisted_and_resettable() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 2b. First run = language, then the plain-words CBAM primer, then the role
-// ---------------------------------------------------------------------------
 
 #[test]
 fn first_run_asks_language_then_cbam_primer_then_role() {
@@ -172,9 +166,7 @@ fn first_run_asks_language_then_cbam_primer_then_role() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 3. Regulatory pins rendered by the artifact
-// ---------------------------------------------------------------------------
 
 #[test]
 fn markup_schedule_pins_r4() {
@@ -239,9 +231,7 @@ fn sample_cn_codes_are_eight_digit() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 4. e-fapiao parser ↔ sample fixture contract (R23 + R16 human-verify)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn efapiao_parser_handles_every_key_in_the_sample_fixture() {
@@ -269,9 +259,7 @@ fn extracted_fields_route_through_human_verification() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 4b. Term tooltips are fully localized (R13)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn term_tips_resolve_in_every_dictionary() {
@@ -302,9 +290,7 @@ fn term_tips_resolve_in_every_dictionary() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 4c. Static chrome keys resolve through the locale files
-// ---------------------------------------------------------------------------
 
 #[test]
 fn wizard_chrome_keys_resolve_in_both_locales() {
@@ -337,9 +323,7 @@ fn wizard_chrome_keys_resolve_in_both_locales() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 5. The wizard stays importable as the binary's embedded asset
-// ---------------------------------------------------------------------------
 
 #[test]
 fn embedded_wizard_matches_the_file_on_disk() {
@@ -349,9 +333,7 @@ fn embedded_wizard_matches_the_file_on_disk() {
     assert_eq!(WIZARD, on_disk);
 }
 
-// ---------------------------------------------------------------------------
 // 6. Exposure & savings card (R7/R6/R4 display aggregation; the client demo)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn exposure_savings_card_contract() {
@@ -377,9 +359,7 @@ fn exposure_savings_card_contract() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 6b. The math is live, not a step — it recomputes while the user types
-// ---------------------------------------------------------------------------
 
 #[test]
 fn math_is_live_on_the_fields_step_not_a_third_step() {
@@ -413,9 +393,7 @@ fn math_is_live_on_the_fields_step_not_a_third_step() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 6c. Plain-words contract — no EU climate-law knowledge is assumed
-// ---------------------------------------------------------------------------
 
 #[test]
 fn ets_and_certificates_are_explained_in_plain_words() {
@@ -457,9 +435,7 @@ fn ets_and_certificates_are_explained_in_plain_words() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 6d. Verification is the verifier's act, not a self-declared checkbox
-// ---------------------------------------------------------------------------
 
 #[test]
 fn verification_is_done_by_the_verifier_role_not_self_declared() {
@@ -488,10 +464,8 @@ fn verification_is_done_by_the_verifier_role_not_self_declared() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 7. The JSON API integration pass (/api/...) — the wizard ↔ core contract:
 //    every endpoint against a real migrated SQLite DB
-// ---------------------------------------------------------------------------
 
 /// Boot the full router over a temp locale set and a migrated temp SQLite
 /// database (mirrors the `test_state` pattern of `src/http/mod.rs`, but with

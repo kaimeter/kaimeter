@@ -11,9 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::domain::errors::DomainError;
 use crate::domain::types::{Completeness, Consignment, Dossier, DossierClass};
 
-// ---------------------------------------------------------------------------
 // Three-class document set (R23)
-// ---------------------------------------------------------------------------
 
 /// A scrap record (R23): scrap carries zero embedded emissions today; the
 /// pre-consumer/post-consumer split and any future loading (COM(2025)989
@@ -57,9 +55,7 @@ pub fn missing_class_key(class: DossierClass) -> &'static str {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 数电发票 (e-fapiao) XML-first parsing (R23) — agent-owned
-// ---------------------------------------------------------------------------
 
 /// Fields extracted from a 数电发票 structured XML (electricity settlement).
 /// The signed XML carries tax-authority metadata, so parsing is deterministic
@@ -72,7 +68,6 @@ pub struct EFapiaoFields {
     pub issue_date: String,
     /// Seller name (the mill/utility).
     pub seller_name: String,
-    /// Electricity quantity, kWh.
     pub electricity_kwh: f64,
     /// Total amount in CNY (pre-tax).
     pub amount_cny: f64,
@@ -288,9 +283,7 @@ fn is_iso_ymd(s: &str) -> bool {
         && matches!(d.parse::<u32>(), Ok(1..=31))
 }
 
-// ---------------------------------------------------------------------------
 // Sub-installation heat & waste-gas balance (R35) — agent-owned
-// ---------------------------------------------------------------------------
 
 /// One metered heat transfer between sub-installations (R35, Annex IV Sec 3).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

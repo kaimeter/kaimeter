@@ -34,7 +34,6 @@ pub trait Storage: Send + Sync {
         sql: &str,
         params: &[&str],
     ) -> Result<Vec<Vec<Option<String>>>, StorageError>;
-    /// Run a scalar query, returning the first column of the first row.
     fn query_scalar(&self, sql: &str, params: &[&str]) -> Result<Option<String>, StorageError>;
     /// Current schema version (max applied migration).
     fn schema_version(&self) -> Result<i64, StorageError>;
@@ -64,7 +63,6 @@ impl SqliteStorage {
         })
     }
 
-    /// Run all embedded migrations newer than the current schema version.
     pub fn migrate(&self) -> Result<(), StorageError> {
         let mut conn = self
             .conn

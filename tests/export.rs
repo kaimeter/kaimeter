@@ -21,9 +21,7 @@ use kaimeter_core::export::{
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-// ---------------------------------------------------------------------------
 // Fixtures
-// ---------------------------------------------------------------------------
 
 /// One declaration field with a JSON value (test shorthand).
 fn df(name: &str, value: Value) -> DeclarationField {
@@ -86,9 +84,7 @@ fn node_hash(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     sha(&input)
 }
 
-// ---------------------------------------------------------------------------
 // R9 — declaration-ready file (first declaration September 30th, 2027)
-// ---------------------------------------------------------------------------
 
 /// R9: a declaration export fails closed unless every mandatory field is
 /// present, and otherwise emits exactly the values given.
@@ -148,9 +144,7 @@ fn declaration_has_no_hidden_metadata() {
     assert_eq!(actual_extra, expected_extra, "R21: extras kept, none added");
 }
 
-// ---------------------------------------------------------------------------
 // R21 — per-field masking + self-audit preview
-// ---------------------------------------------------------------------------
 
 /// R21: before export, a field-level preview shows exactly which fields will
 /// leave — and states what is not included. The provider audits the export
@@ -223,9 +217,7 @@ fn masks_remove_and_anonymize() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — Merkle commitment (R21)
-// ---------------------------------------------------------------------------
 
 /// R21: the pack carries a Merkle root of the production log so a verifier
 /// can confirm the data derives from the audited record without seeing it.
@@ -280,9 +272,7 @@ fn merkle_properties_pinned() {
     assert!(merkle_proof(&[], 0).is_err());
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — Ed25519, verified entirely offline (R21/R22)
-// ---------------------------------------------------------------------------
 
 /// R21 sealed pack (blind pass-through: content carries an anonymized
 /// installation ref + a single CN factor only): seal -> offline verify
@@ -325,9 +315,7 @@ fn sealed_pack_round_trips_offline() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — W3C Verifiable Presentation JSON-LD (R21)
-// ---------------------------------------------------------------------------
 
 /// R21: the pack serializes as a W3C Verifiable Presentation (JSON-LD) so
 /// verifiers validate integrity programmatically, entirely offline.
@@ -384,9 +372,7 @@ fn vp_json_ld_round_trips() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // Sealed pack — VC-JWT for low-spec machines (R21/R25 build note)
-// ---------------------------------------------------------------------------
 
 /// R25 build note (R21): VC-JWT (RFC 7519) — low-spec machines pick fast JWT
 /// verification while JSON-LD stays available. Round-trip is lossless; a
@@ -441,9 +427,7 @@ fn vc_jwt_round_trips() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // R30 — pre-flight registry schema validation
-// ---------------------------------------------------------------------------
 
 /// R30: export files are validated offline BEFORE submission, flagging
 /// missing required attributes before an upload can fail. Missing fields

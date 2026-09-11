@@ -22,9 +22,7 @@ use kaimeter_core::verifier::{
     VisitModality,
 };
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /// The offline register (R33): one verifier, V1, NAB-accredited for groups I
 /// and IV until 2027-12-31. In production this register is the versioned
@@ -59,9 +57,7 @@ fn unsigned_attestation(dossier_hash: &str) -> Attestation {
     }
 }
 
-// ---------------------------------------------------------------------------
 // R28 — findings lifecycle
-// ---------------------------------------------------------------------------
 
 /// R28 / DR (EU) 2025/2551: opening a finding routes the correction request to
 /// the originating mill atomically — the stored status is CorrectionRequested
@@ -161,9 +157,7 @@ fn correction_buffer_is_15_days_by_default() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // R33 — accreditation gate
-// ---------------------------------------------------------------------------
 
 /// R33 (DR (EU) 2025/2551): attestations are accepted only from verifiers in
 /// the offline register whose accreditation is current on the attestation date
@@ -212,9 +206,7 @@ fn accreditation_gate_scopes_and_expiry() {
     assert!(accreditation_gate(&attestation, &[ActivityGroup::I], &expired, "2026-08-31").is_ok());
 }
 
-// ---------------------------------------------------------------------------
 // R28 — attestation sign-off + offline verification (bound to R10 chain root)
-// ---------------------------------------------------------------------------
 
 /// R28 digital sign-off: the attestation carries a detached Ed25519 signature
 /// over `dossier_hash|signed_at_utc|verifier_id`, verifiable offline with the

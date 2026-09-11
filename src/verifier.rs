@@ -12,9 +12,7 @@ use crate::calendar::{civil_from_days, days_from_epoch, parse_iso};
 use crate::domain::errors::DomainError;
 use crate::provenance::AuditChain;
 
-// ---------------------------------------------------------------------------
 // R38 — site-visit modality (travels with the dossier)
-// ---------------------------------------------------------------------------
 
 /// The verifier's site-visit modality per DR (EU) 2025/2551 Art 14.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,9 +26,7 @@ pub enum VisitModality {
     WaivedDesk,
 }
 
-// ---------------------------------------------------------------------------
 // R28 — findings workflow
-// ---------------------------------------------------------------------------
 
 /// Lifecycle state of a non-conformity finding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -153,35 +149,22 @@ pub fn correction_deadline(requested_iso: &str, buffer_days: u32) -> Result<Stri
     Ok(format!("{dy:04}-{dm:02}-{dd:02}"))
 }
 
-// ---------------------------------------------------------------------------
 // R33 — accreditation gate + offline register
-// ---------------------------------------------------------------------------
 
 /// CBAM activity group (DR (EU) 2025/2551): I–VIII plus L/LI/LII.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ActivityGroup {
-    /// Group I.
     I,
-    /// Group II.
     Ii,
-    /// Group III.
     Iii,
-    /// Group IV.
     Iv,
-    /// Group V.
     V,
-    /// Group VI.
     Vi,
-    /// Group VII.
     Vii,
-    /// Group VIII.
     Viii,
-    /// Group L.
     L,
-    /// Group LI.
     Li,
-    /// Group LII.
     Lii,
 }
 
@@ -191,7 +174,6 @@ pub enum ActivityGroup {
 pub struct VerifierRecord {
     /// Verifier identifier.
     pub verifier_id: String,
-    /// Legal name.
     pub name: String,
     /// National Accreditation Body identifier.
     pub nab_id: String,
@@ -353,9 +335,7 @@ pub fn verify_attestation(
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 // Unit tests — complement the contract tests in tests/verifier.rs
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

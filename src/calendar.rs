@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // Date core (frozen): ISO parsing, day-of-week, EU DST rules
-// ---------------------------------------------------------------------------
 
 /// Parse an ISO-8601 `YYYY-MM-DD` date into `(year, month, day)`.
 ///
@@ -99,14 +97,11 @@ pub fn brussels_offset_hours(y: i32, m: u32, d: u32) -> i32 {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Quarters (R24)
-// ---------------------------------------------------------------------------
 
 /// A calendar quarter, the cadence of the certificate-holding duty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Quarter {
-    /// Calendar year.
     pub year: i32,
     /// Quarter number, 1..=4.
     pub q: u32,
@@ -174,9 +169,7 @@ impl Quarter {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Deadline kinds (R14) — agent: build the deadline tables on the core above
-// ---------------------------------------------------------------------------
 
 /// The fixed CBAM obligation dates Kaimeter tracks (R14/R24/R34).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

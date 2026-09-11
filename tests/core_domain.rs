@@ -24,9 +24,7 @@ use kaimeter_core::domain::{
 };
 use kaimeter_core::i18n::I18n;
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /// Open a scratch SQLite database, run migrations, and build a [`Lookup`]
 /// over the seeded tables.
@@ -68,9 +66,7 @@ fn sample_consignment() -> Consignment {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 1. Unit normalization (kWh <-> MWh, kg <-> tonnes)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn kwh_to_mwh_and_back_is_lossless() {
@@ -122,9 +118,7 @@ fn negative_energy_is_rejected() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // 2. Domain type invariants
-// ---------------------------------------------------------------------------
 
 #[test]
 fn cn_code_must_be_eight_digits() {
@@ -163,9 +157,7 @@ fn consignment_year_parses_import_date() {
     assert_eq!(sample_consignment().year().expect("year"), 2026);
 }
 
-// ---------------------------------------------------------------------------
 // 3. Phased mark-up table — REGULATORY PINS
-// ---------------------------------------------------------------------------
 
 /// Regression pin: if the 2026 mark-up is not +10%, this test FAILS.
 #[test]
@@ -264,9 +256,7 @@ fn markup_year_bucket_maps_calendar_years() {
     assert_eq!(MarkupYear::from_calendar_year(2025), None);
 }
 
-// ---------------------------------------------------------------------------
 // 4. Seeded tables -> in-memory lookup
-// ---------------------------------------------------------------------------
 
 #[test]
 fn migration_0002_creates_and_seeds_tables() {
@@ -381,9 +371,7 @@ fn lookup_missing_route_and_cn_are_graceful_errors() {
     assert!(lookup.defaults_for_cn("99999999").is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // 5. Dossier completeness (three document classes, per R23)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn dossier_missing_energy_class_is_flagged() {
@@ -453,9 +441,7 @@ fn dossier_empty_materials_count_as_missing() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 6. Error messages are wired to i18n keys (en + zh-CN)
-// ---------------------------------------------------------------------------
 
 #[test]
 fn every_domain_error_has_locale_keys_in_en_and_zh_cn() {

@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::calendar::parse_iso;
 use crate::domain::errors::DomainError;
 
-// ---------------------------------------------------------------------------
 // Box 37 classification (frozen; UCC procedure-code semantics)
-// ---------------------------------------------------------------------------
 
 /// How a customs procedure attaches CBAM obligations to a consignment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -83,20 +81,16 @@ pub fn counts_toward_net_mass(status: CbamStatus, origin_exempt: bool) -> bool {
     matches!(status, CbamStatus::Liable)
 }
 
-// ---------------------------------------------------------------------------
 // Warehousing promotion (R15): 71 00 CBAM_DEFERRED -> 40 71 CBAM_LIABLE
-// ---------------------------------------------------------------------------
 
 /// A consignment record held in customs warehousing or a free zone.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeferredRecord {
     /// Stable consignment identifier.
     pub consignment_id: String,
-    /// 8-digit CN code.
     pub cn_code: String,
     /// Net mass in kilograms (warehouse quantity).
     pub net_mass_kg: f64,
-    /// ISO-3166 alpha-2 country of origin.
     pub country_of_origin: String,
     /// Date the goods entered the warehousing regime, ISO `YYYY-MM-DD`.
     pub entry_date: String,
@@ -141,11 +135,9 @@ pub fn promote_deferred(
 pub struct LiableRecord {
     /// Stable consignment identifier.
     pub consignment_id: String,
-    /// 8-digit CN code.
     pub cn_code: String,
     /// Net mass in kilograms subject to CBAM.
     pub net_mass_kg: f64,
-    /// ISO-3166 alpha-2 country of origin.
     pub country_of_origin: String,
     /// The date CBAM obligations attach (release for free circulation),
     /// ISO `YYYY-MM-DD` — the locked tax-point date.
@@ -154,9 +146,7 @@ pub struct LiableRecord {
     pub origin_exempt: bool,
 }
 
-// ---------------------------------------------------------------------------
 // IPR discharge tracing (R15): 51 00 -> free circulation with yield ratios
-// ---------------------------------------------------------------------------
 
 /// An inward-processing import record awaiting discharge.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -167,7 +157,6 @@ pub struct IprImport {
     pub cn_code: String,
     /// Net mass in kilograms imported under IPR.
     pub net_mass_kg: f64,
-    /// Country of origin of the precursor.
     pub country_of_origin: String,
 }
 
@@ -226,9 +215,7 @@ pub fn apply_ipr_discharge(
     })
 }
 
-// ---------------------------------------------------------------------------
 // Post-clearance adjustment (R41, UCC Art 48 / CBAM Art 19)
-// ---------------------------------------------------------------------------
 
 /// A post-clearance revision of an already-cleared customs entry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -269,9 +256,7 @@ pub fn post_clearance_delta(revision: &PostClearanceRevision) -> Result<f64, Dom
     Ok(revision.revised_net_mass_kg - revision.original_net_mass_kg)
 }
 
-// ---------------------------------------------------------------------------
 // Outward processing relief (R44, UCC Art 259 / CBAM Art 2(2))
-// ---------------------------------------------------------------------------
 
 /// An outward-processing assessment: goods exported for processing abroad
 /// (61 21) and re-imported (40 21) are assessed on the offshore value-added
@@ -294,9 +279,7 @@ pub fn opr_net_emissions(assessment: &OprAssessment) -> f64 {
     (assessment.offshore_processing_tco2e - assessment.exported_baseline_tco2e).max(0.0)
 }
 
-// ---------------------------------------------------------------------------
 // Origin exemptions (R43 linked markets, R45 military use)
-// ---------------------------------------------------------------------------
 
 /// Origin-exemption flags carried on a consignment. Exempt consignments never
 /// count toward net mass or obligations; eligibility is data, not code.

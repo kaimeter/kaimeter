@@ -42,9 +42,7 @@ fn assert_f64(actual: f64, expected: f64) {
     );
 }
 
-// ---------------------------------------------------------------------------
 // R24 — quarterly certificate-position monitor (Art 22(2) as amended)
-// ---------------------------------------------------------------------------
 
 /// Art 22(2) CBAM Reg as amended by Reg (EU) 2025/2083: the quarterly
 /// certificate-holding duty is 50% of the embedded-emissions basis
@@ -105,9 +103,7 @@ fn shortfall_pinned() {
     assert_f64(shortfall_tco2e(&position(600.0)), 0.0);
 }
 
-// ---------------------------------------------------------------------------
 // R32 — penalty exposure engine (Art 26(1), Art 26(2a))
-// ---------------------------------------------------------------------------
 
 /// Art 26(1) CBAM Reg as amended by Reg (EU) 2025/2083: EUR 100 per tonne
 /// CO2e of certificates not surrendered, index-linked to EU consumer
@@ -176,9 +172,7 @@ fn art26_2a_multiplier_range_pinned() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // R39 — Member-State penalty variations (Art 26(2))
-// ---------------------------------------------------------------------------
 
 /// Art 26(2) CBAM Reg: penalties for other non-compliance are set by each
 /// Member State. The jurisdiction table resolves the national framework per
@@ -227,9 +221,7 @@ fn jurisdiction_table_lookup() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // R37 — NCA financial guarantee projection (IR (EU) 2025/2549, Art 4-6)
-// ---------------------------------------------------------------------------
 
 /// IR (EU) 2025/2549, Art 4-6: declarants not established for the two prior
 /// financial years must lodge a financial security covering the projected
@@ -260,9 +252,7 @@ fn guarantee_sufficiency_flag() {
     assert!(guarantee_sufficient(&over));
 }
 
-// ---------------------------------------------------------------------------
 // R40 — NCA communications log (Arts 11 & 17)
-// ---------------------------------------------------------------------------
 
 /// Arts 11 & 17 CBAM Reg: NCA information requests and hearing notices
 /// carry a response deadline; the counter counts calendar days from today
@@ -306,9 +296,7 @@ fn nca_deadline_counter() {
     assert!(broken.days_remaining("2027-08-01").is_err());
 }
 
-// ---------------------------------------------------------------------------
 // R42 — authorised-declarant status lifecycle (Art 17(8))
-// ---------------------------------------------------------------------------
 
 /// Art 17(8) CBAM Reg: the authorised-declarant status state machine.
 /// Legal transitions: Active+Suspend -> Suspended, Suspended+Revoke ->

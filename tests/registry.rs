@@ -16,9 +16,7 @@ use kaimeter_core::customs::CbamStatus;
 use kaimeter_core::domain::errors::DomainError;
 use kaimeter_core::registry::{self, OperatorRecord, SadRow};
 
-// ---------------------------------------------------------------------------
 // Fixtures
-// ---------------------------------------------------------------------------
 
 /// R15 SAD/H1 XML fixture: two `GoodsItem` records using different accepted
 /// spellings per field family, with irregular whitespace (customs brokers
@@ -64,9 +62,7 @@ fn expected_rows() -> Vec<SadRow> {
     ]
 }
 
-// ---------------------------------------------------------------------------
 // R15: bulk SAD/H1 import — users never re-key held data
-// ---------------------------------------------------------------------------
 
 /// REGULATORY PIN (R15): customs/broker H1 (SAD) XML exports are parsed
 /// straight into consignment rows — users never re-key data Kaimeter
@@ -143,9 +139,7 @@ fn sad_csv_fixture_parses_with_and_without_additional_code() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // R15: classification via the frozen Box 37 rule engine
-// ---------------------------------------------------------------------------
 
 /// REGULATORY PIN (R15): imported rows are classified through the frozen
 /// `customs::classify` Box 37 table — 40 00 release for free circulation is
@@ -194,9 +188,7 @@ fn classify_imports_uses_frozen_box37() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // R14/R15 build note: offline EORI format validation
-// ---------------------------------------------------------------------------
 
 /// REGULATORY PIN (R14/R15 build note): EORI identifiers are format-checked
 /// offline (generic rule + pinned national formats for the big states)
@@ -273,9 +265,7 @@ fn vies_format_pins() {
     ));
 }
 
-// ---------------------------------------------------------------------------
 // R36: Registry operator -> installation mapping (Art 10)
-// ---------------------------------------------------------------------------
 
 /// REGULATORY PIN (R36 / Reg (EU) 2023/956 Art 10, IR (EU) 2024/3210
 /// Art 5): third-country operator registration records map onto local

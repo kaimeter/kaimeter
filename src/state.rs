@@ -30,12 +30,10 @@ impl AppState {
         }
     }
 
-    /// The wizard HTML for this state's locales (disk overrides included).
     pub fn wizard_html(&self) -> &Arc<String> {
         &self.wizard_html
     }
 
-    /// Access the i18n layer.
     pub fn i18n(&self) -> &I18n {
         &self.i18n
     }
