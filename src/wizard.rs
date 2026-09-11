@@ -6,9 +6,9 @@
 //! `web/wizard.html` is a single zero-dependency file that must also run
 //! standalone from `file://`, so its translation dictionaries physically live
 //! inside it — but they are GENERATED from `locales/*.json` (the `ui.*` keys),
-//! never authored by hand. The generated block sits between the markers below
-//! and is refreshed by `cargo run --bin regen-wizard`; a freshness test here
-//! fails the build when the committed block drifts from the locale files.
+//! never authored by hand. The bundled fallback is generated at build time by
+//! `web/scripts/gen-locales.mjs` from the same files, and the server overwrites
+//! the region at startup with whatever it actually loaded.
 //!
 //! When the binary serves the page, [`render`] re-injects the *loaded* locales
 //! into the same region — so a `locales/` directory on disk re-localizes the
@@ -23,8 +23,10 @@ use std::path::Path;
 pub const WIZARD_TEMPLATE: &str = include_str!("../web/wizard.html");
 
 /// Region markers around the generated dictionary block (`const L = …`).
-const LOCALES_START: &str = "/*kaimeter-locales-start*/";
-const LOCALES_END: &str = "/*kaimeter-locales-end*/";
+pub const LOCALES_START_MARKER: &str = "/*kaimeter-locales-start*/";
+const LOCALES_START: &str = LOCALES_START_MARKER;
+pub const LOCALES_END_MARKER: &str = "/*kaimeter-locales-end*/";
+const LOCALES_END: &str = LOCALES_END_MARKER;
 
 /// Where the wizard template came from, for startup logging.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,9 +79,9 @@ pub fn render(i18n: &I18n, path: Option<&Path>) -> (String, WizardSource) {
     (render_template(tpl, i18n), source)
 }
 
-/// Render the embedded template. This is what `regen-wizard` writes to disk:
-/// the committed `web/wizard.html` is always the embedded form, never a
-/// development override.
+/// Render the embedded template unchanged. Kept because the serving path and
+/// the tests both need "the template as shipped"; the locale region it carries
+/// is a build-time artifact of the frontend, not something Rust regenerates.
 pub fn render_embedded(i18n: &I18n) -> String {
     render_template(WIZARD_TEMPLATE, i18n)
 }
@@ -120,20 +122,6 @@ mod tests {
     #[test]
     fn template_carries_exactly_one_locale_region() {
         assert!(region(WIZARD_TEMPLATE).is_some());
-    }
-
-    #[test]
-    fn committed_wizard_matches_the_locale_files() {
-        // The freshness guard: the generated block in web/wizard.html must be
-        // exactly what the committed locale files produce. Drift means
-        // someone edited one side without regenerating.
-        let i18n = I18n::embedded().expect("embedded locales");
-        assert_eq!(
-            render_embedded(&i18n),
-            WIZARD_TEMPLATE,
-            "web/wizard.html is stale — edit locales/*.json, then run \
-             `cargo run --bin regen-wizard`"
-        );
     }
 
     #[test]

@@ -121,7 +121,7 @@ impl I18n {
     /// The compiled-in locale assets — the repo's own `locales/*.json`,
     /// the same set [`Self::load_or_embedded`] falls back to. This is the
     /// canonical source the wizard's generated dictionaries come from
-    /// (`regen-wizard`, `crate::wizard`).
+    /// (`crate::wizard`, `web/scripts/gen-locales.mjs`).
     pub fn embedded() -> Result<Self, I18nError> {
         let en = parse_locale("en", EMBEDDED_EN)?;
         let zh = parse_locale("zh-CN", EMBEDDED_ZH_CN)?;

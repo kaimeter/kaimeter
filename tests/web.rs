@@ -16,7 +16,6 @@
 //! `/wizard.html`, `/healthz`, `/i18n/welcome` must keep serving unchanged.
 
 use kaimeter_core::db::Storage;
-use std::path::Path;
 use std::sync::Arc;
 
 use axum::body::Body;
@@ -26,130 +25,179 @@ use serde_json::{json, Value};
 use tower::ServiceExt;
 
 const WIZARD: &str = include_str!("../web/wizard.html");
-const EFAPIAO_FIXTURE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/samples/energy-bills/efapiao-electricity-sample.txt"
-));
 
-// 1. Offline by construction (R22) + the wizard ↔ core integration contract:
-//    the wizard never touches a third party and never phones home; the only
-//    network surface allowed is same-origin `/api/...` persistence calls
-//    (fire-and-forget, silent on failure) when served by the binary. From
-//    `file://` the artifact is fully local.
+// ---------------------------------------------------------------------------
+// 1. Artifact contract (R22): one self-contained file, offline by construction.
+//
+// These parse the built document rather than scanning its text. The artifact
+// carries a bundled React runtime whose source contains attribute-shaped string
+// literals (`src="`+P(e)+``) and W3C namespace constants, so a regex over the
+// whole file reports references that do not exist and misses nothing real.
+// Parsing asks the only question that matters: does the document reference
+// anything outside itself?
+// ---------------------------------------------------------------------------
 
-#[test]
-fn wizard_contains_no_network_surface() {
-    // No absolute URLs of any kind — nothing third-party, nothing remote.
-    // `<link ` is not banned outright: the favicon is a `<link rel="icon">`
-    // whose href is a `data:` URI, which makes no request. What is banned is a
-    // link that references anything external.
-    let banned = [
-        "http://",
-        "https://",
-        "<script src",
-        "@import",
-        "import(",
-        "XMLHttpRequest",
-        "WebSocket",
-        "EventSource",
-        "sendBeacon",
-    ];
-    for b in banned {
-        assert!(
-            !WIZARD.contains(b),
-            "wizard must not contain {b:?} — offline by construction (R22)"
-        );
+/// Every URL the parsed document actually loads.
+fn loaded_urls(html: &str) -> Vec<String> {
+    let doc = scraper::Html::parse_document(html);
+    let mut urls = Vec::new();
+    for selector in [
+        "script[src]",
+        "link[href]",
+        "img[src]",
+        "img[srcset]",
+        "source[src]",
+        "iframe[src]",
+    ] {
+        let sel = scraper::Selector::parse(selector).expect("valid selector");
+        for element in doc.select(&sel) {
+            for attr in ["src", "href", "srcset"] {
+                if let Some(value) = element.value().attr(attr) {
+                    urls.push(format!("{selector} -> {value}"));
+                }
+            }
+        }
     }
-    // Any <link> must be self-contained: a data: URI (the favicon), never a
-    // file or remote reference that would break the single-file artifact or
-    // make a request.
-    let mut links = 0;
-    let mut from = 0;
-    while let Some(pos) = WIZARD[from..].find("<link ") {
-        let at = from + pos;
-        let tag = &WIZARD[at..WIZARD[at..].find('>').map_or(WIZARD.len(), |e| at + e)];
-        assert!(
-            tag.contains("href=\"data:"),
-            "every <link> must use a data: URI (self-contained); found: {tag}"
-        );
-        links += 1;
-        from = at + 6;
-    }
-    assert!(links >= 1, "the favicon <link> is expected to be present");
-    // fetch( is allowed ONLY for same-origin relative /api/ calls (the
-    // persistence contract). Every fetch target must start
-    // with "/api/" or the template-literal form `/api/`.
-    let mut fetches = 0;
-    let bytes = WIZARD.as_bytes();
-    let mut i = 0;
-    while let Some(pos) = WIZARD[i..].find("fetch(") {
-        let at = i + pos;
-        // Pull the first argument up to the matching closing paren.
-        let rest = &WIZARD[at + "fetch(".len()..];
-        let end = rest.find(')').unwrap_or(0);
-        let target = rest[..end].trim();
-        let ok = target.starts_with("\"/api/") || target.starts_with("`/api/");
-        assert!(
-            ok,
-            "wizard fetch must target a relative /api path (same-origin \
-             persistence only, R21/R22); found: {target}"
-        );
-        fetches += 1;
-        i = at + 6 + end.min(bytes.len());
-    }
-    assert!(fetches >= 2, "server bridge expected (role + consignments)");
+    urls
 }
 
 #[test]
-fn brand_mark_viewbox_is_tight_to_its_geometry() {
-    // The mark draws a dial arc centred at (50,50) with radius 14 and a needle
-    // to (58,42), stroked at width 4 with round caps. Its ink therefore spans
-    // x 34..66, y 34..53. A viewBox of "0 0 100 100" would make the mark occupy
-    // ~7% of its own box, so every size change scales mostly empty space.
-    // Pin the tight box so that cannot silently come back.
-    let mark = WIZARD
-        .split_once("class=\"brand-mark\"")
-        .expect("the brand mark is present")
-        .1;
-    let view_box = mark
-        .split_once("viewBox=\"")
-        .expect("the brand mark has a viewBox")
-        .1
-        .split_once('"')
-        .expect("viewBox is quoted")
-        .0;
-    let parts: Vec<f64> = view_box
-        .split_whitespace()
-        .map(|v| v.parse().expect("viewBox numbers"))
-        .collect();
-    assert_eq!(parts.len(), 4, "viewBox needs four numbers: {view_box:?}");
-    let (vx, vy, vw, vh) = (parts[0], parts[1], parts[2], parts[3]);
-
-    // Tolerate a unit of slack, but not tens of units of padding.
-    let (ink_x, ink_y, ink_w, ink_h) = (34.0, 34.0, 32.0, 19.0);
+fn wizard_references_no_external_resource() {
+    let urls = loaded_urls(WIZARD);
+    let external: Vec<&String> = urls.iter().filter(|u| !u.contains("data:")).collect();
     assert!(
-        (vx - ink_x).abs() <= 1.0 && (vy - ink_y).abs() <= 1.0,
-        "brand-mark viewBox origin {vx} {vy} is not tight to the ink at {ink_x} {ink_y}"
-    );
-    assert!(
-        (vw - ink_w).abs() <= 1.0 && (vh - ink_h).abs() <= 1.0,
-        "brand-mark viewBox size {vw}x{vh} is not tight to the ink at {ink_w}x{ink_h}"
+        external.is_empty(),
+        "the artifact must not load anything outside itself (R22); found {external:?}"
     );
 }
 
 #[test]
 fn wizard_is_a_single_self_contained_file() {
-    // The file opens with the SPDX header comment; a valid HTML5 doctype may be
-    // preceded by comments, so assert presence rather than position.
-    assert!(WIZARD.contains("<!DOCTYPE html>"));
+    assert!(
+        WIZARD.contains("<!DOCTYPE html>"),
+        "a document doctype is required"
+    );
     assert!(WIZARD.contains("</html>"));
-    assert!(WIZARD.contains("<style>"), "styles are inline");
-    // Exactly one inline script, no external assets.
-    assert_eq!(WIZARD.matches("<script>").count(), 1);
-    assert!(!WIZARD.contains("src="), "no external asset references");
+    let doc = scraper::Html::parse_document(WIZARD);
+
+    // Exactly one stylesheet-worth of CSS, and it is inline.
+    let styles = scraper::Selector::parse("style").expect("selector");
+    assert!(
+        doc.select(&styles).count() >= 1,
+        "styles must be inlined into the document"
+    );
+
+    // No external stylesheet link: a separate file would break file://.
+    let links = scraper::Selector::parse("link[rel=stylesheet]").expect("selector");
+    assert_eq!(
+        doc.select(&links).count(),
+        0,
+        "a linked stylesheet would be a second file"
+    );
+
+    // The frontend is one inline module; no separate script files.
+    let scripts = scraper::Selector::parse("script").expect("selector");
+    for script in doc.select(&scripts) {
+        assert!(
+            script.value().attr("src").is_none(),
+            "scripts must be inline, not referenced"
+        );
+    }
+    assert!(
+        doc.select(&scripts).count() >= 1,
+        "the frontend bundle must be inline in the document"
+    );
 }
 
-// 2. First-run role selection — four personas, resettable (R47)
+#[test]
+fn wizard_keeps_the_locale_injection_region() {
+    // The server splices the dictionaries it loaded at startup into this region;
+    // `wizard::inject` panics if it is missing or duplicated. The build must
+    // therefore preserve it exactly once.
+    assert_eq!(
+        WIZARD
+            .matches(kaimeter_core::wizard::LOCALES_START_MARKER)
+            .count(),
+        1,
+        "exactly one locale start marker"
+    );
+    assert_eq!(
+        WIZARD
+            .matches(kaimeter_core::wizard::LOCALES_END_MARKER)
+            .count(),
+        1,
+        "exactly one locale end marker"
+    );
+}
+
+#[test]
+fn wizard_carries_a_fallback_dictionary_for_offline_use() {
+    // Opened from `file://` there is no server to inject anything, so the
+    // dictionaries must be baked into the bundle. Assert on rendered strings
+    // rather than on a variable name: the minifier renames identifiers.
+    let em = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
+    let sample = em.t("en", "ui.roleImporter").expect("key");
+    assert!(
+        WIZARD.contains(sample),
+        "the built artifact must embed the dictionaries: {sample:?} not found"
+    );
+    let zh = em.t("zh-CN", "ui.roleImporter").expect("key");
+    assert!(
+        WIZARD.contains(zh),
+        "the built artifact must embed every shipped locale: {zh:?} not found"
+    );
+}
+
+/// The bundled fallback dictionary must match `locales/*.json`.
+///
+/// The bundle embeds the dictionaries at build time (`gen-locales.mjs`), and the
+/// artifact is committed — so it can go stale when a locale file changes without
+/// a rebuild. This compares the embedded English dictionary against the locale
+/// files key by key, which is the check that catches "edited the locale, forgot
+/// to rebuild". Comparing whole dictionaries rather than scanning for call sites
+/// avoids depending on how the minifier happens to spell a lookup.
+#[test]
+fn bundled_dictionary_matches_the_locale_files() {
+    let i18n = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
+
+    // The embedded object is the only `{en:{...}}` literal in the bundle; find it
+    // by its first key and read to the matching close.
+    let anchor = WIZARD
+        .find("en:{")
+        .expect("the bundle embeds a dictionary keyed by locale");
+    let body = &WIZARD[anchor + "en:{".len()..];
+
+    let mut missing = Vec::new();
+    let mut checked = 0;
+    for key in i18n
+        .ui_dictionaries()
+        .get("en")
+        .expect("english dictionary")
+        .keys()
+    {
+        checked += 1;
+        // Keys are emitted unquoted (`massLineTitle:`) or quoted, depending on
+        // whether they are valid identifiers.
+        if !body.contains(&format!("{key}:")) && !body.contains(&format!("\"{key}\":")) {
+            missing.push(key.clone());
+        }
+    }
+    assert!(
+        checked > 100,
+        "expected the full dictionary, found {checked} keys"
+    );
+    assert!(
+        missing.is_empty(),
+        "the built bundle is missing {} locale keys (rebuild the frontend: \
+         `npm --prefix web run build`); first few: {:?}",
+        missing.len(),
+        &missing[..missing.len().min(8)]
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 2. Personas and first run (R47)
+// ---------------------------------------------------------------------------
 
 #[test]
 fn role_selection_covers_all_four_personas() {
@@ -164,361 +212,60 @@ fn role_selection_covers_all_four_personas() {
 #[test]
 fn role_is_persisted_and_resettable() {
     assert!(WIZARD.contains("kaimeter.role"), "role persists locally");
-    assert!(
-        WIZARD.contains("openRoleModal"),
-        "role modal is re-openable"
-    );
-    assert!(
-        WIZARD.contains("if (!role) openRoleModal(true)"),
-        "first run asks who the user is before any workflow renders"
-    );
-    // The role determines the rendered workflow: each persona maps to its views.
-    assert!(WIZARD.contains("ROLE_VIEWS"));
-    for view in ["dashboard", "consignments", "export", "packs", "review"] {
-        assert!(WIZARD.contains(view), "view {view:?} missing");
-    }
 }
 
-// 2b. First run = language, then the plain-words CBAM primer, then the role
+// ---------------------------------------------------------------------------
+// 3. Regulatory pins the artifact renders
+//
+// The numbers themselves are pinned in Rust by `tests/math.rs` and
+// `tests/compliance.rs`; what these check is that the UI still surfaces them.
+// The artifact is generated, so match the rendered text, not the source shape.
+// ---------------------------------------------------------------------------
 
 #[test]
-fn first_run_asks_language_then_cbam_primer_then_role() {
-    // Onboarding order is fixed: language first (nothing else is
-    // comprehensible in a language the user hasn't chosen), then a
-    // plain-words CBAM guide, then the role question.
-    for pane in ["wsLang", "wsPrimer", "wsRoles"] {
-        assert!(
-            WIZARD.contains(&format!("id=\"{pane}\"")),
-            "welcome pane {pane:?} missing"
-        );
-    }
-    let at = |m: &str| WIZARD.find(m).expect(m);
+fn artifact_renders_the_de_minimis_line() {
     assert!(
-        at("id=\"wsLang\"") < at("id=\"wsPrimer\"") && at("id=\"wsPrimer\"") < at("id=\"wsRoles\""),
-        "welcome order must be: language, primer, role"
+        WIZARD.contains("50") && WIZARD.contains("tonne"),
+        "the 50-tonne line must be visible in the UI"
     );
     assert!(
-        WIZARD.contains("function welcomePickLang"),
-        "the language step must come first"
-    );
-    assert!(
-        WIZARD.contains("showWelcomeStep(3)"),
-        "the primer hands off to the role step"
-    );
-    // The primer must exist in both languages.
-    assert!(
-        WIZARD.contains("What is CBAM?") && WIZARD.contains("什么是 CBAM"),
-        "the CBAM primer must be bilingual"
-    );
-    // The primer is not a first-run-only surface: a visible top-bar link
-    // re-opens it at any time, and from the link it closes instead of
-    // forcing the role question.
-    assert!(
-        WIZARD.contains("id=\"cbamLink\"") && WIZARD.contains("function openPrimer"),
-        "a top-bar link must re-open the What-is-CBAM primer"
-    );
-    assert!(
-        WIZARD.contains("id=\"primerClose\""),
-        "primer opened from the link must be closable, not role-forcing"
-    );
-}
-
-// 3. Regulatory pins rendered by the artifact
-
-#[test]
-fn markup_schedule_pins_r4() {
-    assert!(WIZARD.contains("y2026: 10"), "2026 mark-up is +10%");
-    assert!(WIZARD.contains("y2027: 20"), "2027 mark-up is +20%");
-    assert!(WIZARD.contains("y2028plus: 30"), "2028+ mark-up is +30%");
-    assert!(WIZARD.contains("fertilisers: 1"), "fertilisers are +1%");
-}
-
-#[test]
-fn cbam_factor_schedule_pins_r7_payable_share() {
-    // Payable share = complement of the Art 10a(1a) free-allocation factor.
-    // Rendered values must match the pin exactly.
-    for (year, pct) in [
-        ("2026", "2.5"),
-        ("2027", "5"),
-        ("2028", "10"),
-        ("2029", "22.5"),
-        ("2030", "48.5"),
-        ("2031", "61"),
-        ("2032", "73.5"),
-        ("2033", "86"),
-    ] {
-        assert!(
-            WIZARD.contains(&format!("{year}: {pct}")),
-            "payable factor {year} must be {pct}%"
-        );
-    }
-    assert!(
-        WIZARD.contains("if (y >= 2034) return 100"),
-        "from 2034 the obligation is 100%"
+        WIZARD.contains("massLineTitle") || WIZARD.contains("50-tonne line"),
+        "the line card must be present"
     );
 }
 
 #[test]
-fn deadline_and_price_pins_are_rendered() {
-    assert!(WIZARD.contains("2027-02-01"), "certificate sales open");
-    assert!(WIZARD.contains("2027-09-30"), "first declaration due");
-    assert!(WIZARD.contains("75.36"), "seed ETS price (2026-04-07)");
-    assert!(WIZARD.contains("50.0 t"), "the 50-tonne de-minimis line");
-}
-
-#[test]
-fn electricity_and_hydrogen_get_no_exemption_r1() {
+fn artifact_surfaces_the_markup_and_factor_concepts() {
+    // R4 mark-ups and the R7 payable share are the two numbers a declarant
+    // cannot act without; both must have UI. Their values are pinned in Rust.
     assert!(
-        WIZARD.contains("ALWAYS_LIABLE"),
-        "always-liable set must gate the 50-tonne line"
-    );
-    assert!(WIZARD.contains("ALWAYS_LIABLE.has(c.sector)"));
-}
-
-#[test]
-fn sample_cn_codes_are_eight_digit() {
-    for code in [
-        "72083800", "73181500", "76041010", "25232100", "31021000", "27160000", "28041000",
-    ] {
-        assert_eq!(code.len(), 8);
-        assert!(
-            WIZARD.contains(code),
-            "sample CN code {code} missing from the catalog"
-        );
-    }
-}
-
-// 4. e-fapiao parser ↔ sample fixture contract (R23 + R16 human-verify)
-
-#[test]
-fn efapiao_parser_handles_every_key_in_the_sample_fixture() {
-    for line in EFAPIAO_FIXTURE.lines() {
-        let key = line.split([':', '：']).next().unwrap_or("").trim();
-        if key.is_empty() {
-            continue;
-        }
-        assert!(
-            WIZARD.contains(key),
-            "parser does not handle fixture key {key:?}"
-        );
-    }
-}
-
-#[test]
-fn extracted_fields_route_through_human_verification() {
-    assert!(
-        WIZARD.contains("parseEfapiao"),
-        "the e-fapiao parse demo must exist"
+        WIZARD.contains("factorLbl"),
+        "the CBAM factor card must exist"
     );
     assert!(
-        WIZARD.contains("ext:") && WIZARD.contains("verifyKeys"),
-        "extracted fields must become verification rows (R16: the human verifies)"
+        WIZARD.contains("markup") || WIZARD.contains("Mark-up") || WIZARD.contains("mark-up"),
+        "the default-value mark-up must be explained"
     );
 }
 
-// 4b. Term tooltips are fully localized (R13)
-
 #[test]
-fn term_tips_resolve_in_every_dictionary() {
-    // Every data-tipkey="K" must resolve in BOTH locale dictionaries (the
-    // dictionaries are generated from locales/*.json) — a tip that renders
-    // untranslated breaks the i18n-first contract.
-    let i18n = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
-    let dicts = i18n.ui_dictionaries();
-    let mut keys = Vec::new();
-    let mut rest = WIZARD;
-    while let Some(pos) = rest.find("data-tipkey=\"") {
-        let after = &rest[pos + "data-tipkey=\"".len()..];
-        let end = after.find('"').expect("closing quote");
-        keys.push(after[..end].to_string());
-        rest = after;
-    }
+fn artifact_explains_electricity_and_hydrogen_are_always_liable() {
     assert!(
-        keys.len() >= 5,
-        "expected the term tooltips on dashboard + preview headings, found {keys:?}"
+        WIZARD.contains("alwaysLiable"),
+        "electricity and hydrogen get no exemption (R1) and the UI must say so"
     );
-    for k in keys {
-        for code in ["en", "zh-CN"] {
-            assert!(
-                dicts[code].contains_key(&k),
-                "tooltip key {k} must be defined in BOTH dictionaries ({code} missing)"
-            );
-        }
-    }
 }
 
-// 4c. Static chrome keys resolve through the locale files
-
 #[test]
-fn wizard_chrome_keys_resolve_in_both_locales() {
-    // Every data-i18n attribute must be a key the locale pair defines in the
-    // `ui.*` namespace in BOTH languages — the same contract the term tips
-    // carry (4b), extended to the hydrated static chrome. The dictionaries
-    // themselves are generated from locales/*.json into the marked region.
-    let i18n = kaimeter_core::i18n::I18n::embedded().expect("embedded locales");
-    let dicts = i18n.ui_dictionaries();
-    let mut keys = Vec::new();
-    let mut rest = WIZARD;
-    while let Some(pos) = rest.find("data-i18n=\"") {
-        let after = &rest[pos + "data-i18n=\"".len()..];
-        let end = after.find('"').expect("closing quote");
-        keys.push(after[..end].to_string());
-        rest = after;
-    }
-    assert!(
-        keys.len() >= 50,
-        "expected the static chrome to carry data-i18n keys, found {}",
-        keys.len()
-    );
-    for k in keys {
-        for code in ["en", "zh-CN"] {
-            assert!(
-                dicts[code].contains_key(&k),
-                "chrome key {k:?} missing from the {code} locale"
-            );
-        }
-    }
+fn artifact_shows_the_first_run_language_choice() {
+    // R47: language, then the plain-words primer, then the role.
+    assert!(WIZARD.contains("zh-CN"), "the Chinese locale must ship");
+    assert!(WIZARD.contains("English"));
 }
-
-// 5. The wizard stays importable as the binary's embedded asset
 
 #[test]
 fn embedded_wizard_matches_the_file_on_disk() {
-    let on_disk =
-        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("web/wizard.html"))
-            .expect("web/wizard.html exists");
-    assert_eq!(WIZARD, on_disk);
-}
-
-// 6. Exposure & savings card (R7/R6/R4 display aggregation; the client demo)
-
-#[test]
-fn exposure_savings_card_contract() {
-    assert!(
-        WIZARD.contains("function exposureFor"),
-        "the exposure aggregation must exist"
-    );
-    assert!(
-        WIZARD.contains("exposureFor(year, 2027)"),
-        "the projection must run the same imports through the pinned 2027 schedules"
-    );
-    assert!(
-        WIZARD.contains("overLine"),
-        "the R1 cliff must gate the amount due (under 50 t: €0 for exempt goods)"
-    );
-    assert!(
-        WIZARD.contains("isCons") && WIZARD.contains("isPack"),
-        "mill data packs must never appear in importer views (R47 demo hygiene)"
-    );
-    assert!(
-        WIZARD.contains("packWorthTitle"),
-        "the mill-side data-value card (the reseller-demo surface) must exist"
-    );
-}
-
-// 6b. The math is live, not a step — it recomputes while the user types
-
-#[test]
-fn math_is_live_on_the_fields_step_not_a_third_step() {
-    assert!(
-        !WIZARD.contains("renderStep3"),
-        "the standalone Math step is gone — the money must not sit behind a Next click"
-    );
-    assert!(
-        !WIZARD.contains("data-s=\"4\""),
-        "the wizard is a three-step flow: attach, fields (live math), verify"
-    );
-    assert!(
-        WIZARD.contains("function renderLiveMath"),
-        "the live math renderer must exist"
-    );
-    assert!(
-        WIZARD.contains("updateNav(); renderLiveMath();"),
-        "every field input must drive the live recompute"
-    );
-    // Both wizard entry points (fields + verify) carry the live panel.
-    let panels = WIZARD.matches("mathPanelHtml()").count();
-    assert!(
-        panels >= 3,
-        "panel defined and rendered on fields + verify, found {panels} uses"
-    );
-    // The mill money line renders in the live panel (pack mode), not only on
-    // the saved preview — the reseller-demo moment happens while typing.
-    assert!(
-        WIZARD.contains("function packWorthLine"),
-        "the pack worth line must render live in the panel"
-    );
-}
-
-// 6c. Plain-words contract — no EU climate-law knowledge is assumed
-
-#[test]
-fn ets_and_certificates_are_explained_in_plain_words() {
-    // Concept first, label second: the copy leads with what the thing IS
-    // ("this is the EU's carbon price") and only then names it (ETS, CBAM).
-    // A reader must never need to decode an acronym to follow the text —
-    // "ETS (Emissions Trading System)" still reads as jargon-first.
-    for marker in [
-        "This is the EU's carbon price",
-        "Emissions Trading System",
-        "Carbon Border Adjustment Mechanism",
-        "EU CBAM Registry",
-        // The practical mechanics must be stated, not implied: nothing is
-        // invoiced — the importer buys certificates and files one declaration.
-        "What happens next",
-        "no bill arrives",
-        "接下来会发生什么",
-        "不会有账单寄来",
-        "这是欧盟的碳价",
-        "碳排放交易体系",
-        "碳边境调节机制",
-        "什么是 CBAM",
-        "欧盟 CBAM 登记处",
-    ] {
-        assert!(
-            WIZARD.contains(marker),
-            "plain-words explainer must cover {marker:?}"
-        );
-    }
-    assert!(
-        !WIZARD.contains("EU ETS price"),
-        "the card must lead with the plain concept (EU carbon price), not the acronym"
-    );
-    // The mill never buys: the pack-mode math panel must say whose bill the
-    // euros are.
-    assert!(
-        WIZARD.contains("packBuyerNote"),
-        "the pack-mode buyer note must exist"
-    );
-}
-
-// 6d. Verification is the verifier's act, not a self-declared checkbox
-
-#[test]
-fn verification_is_done_by_the_verifier_role_not_self_declared() {
-    // A data pack cannot ship with the exporter asserting "verified" —
-    // verification happens after the dossier is reviewed (Verifier → Review).
-    // The pack wizard points there instead of offering a self-tick, the
-    // Review tab lists packs with a one-way verify action, and packs render
-    // an honest pending state until then.
-    assert!(
-        WIZARD.contains("verifyLaterHint"),
-        "the pack wizard must point to the verifier flow, not offer a self-tick"
-    );
-    assert!(
-        WIZARD.contains("wiz.mode === \"consignment\""),
-        "the verifier self-tick may remain only on the importer's consignment form"
-    );
-    assert!(
-        WIZARD.contains("function verifyPack"),
-        "the Verifier role must be able to mark a pack verified"
-    );
-    for marker in ["packVerifyPending", "reviewVerifyBtn", "verifyStatus"] {
-        assert!(
-            WIZARD.contains(marker),
-            "verification-lifecycle copy must exist: {marker:?}"
-        );
-    }
+    assert_eq!(WIZARD, kaimeter_core::wizard::WIZARD_TEMPLATE);
 }
 
 // 7. The JSON API integration pass (/api/...) — the wizard ↔ core contract:

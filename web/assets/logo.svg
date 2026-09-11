@@ -1,68 +1,23 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Copyright 2026 Keldrion, LLC and contributors -->
 
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 100 100"
-  width="100"
-  height="100"
-  role="img"
-  aria-labelledby="kaimeter-logo-title"
->
-  <title id="kaimeter-logo-title">Kaimeter</title>
-
-  <!-- Presentation attributes are the baseline so the mark renders correctly
-       even where a <style> block is stripped (email clients, some SVG
-       sanitizers, older rasterizers). The block below only re-colours, so its
-       removal degrades to the brand palette rather than to black. -->
-  <style>
-    .km-bg {
-      fill: var(--primary, var(--kaimeter-primary, #2d3748));
-    }
-    .km-surface {
-      fill: var(--surface, var(--kaimeter-surface, #ffffff));
-    }
-    .km-accent {
-      fill: var(--accent, var(--kaimeter-accent, #38a169));
-    }
-    .km-ink {
-      stroke: var(--primary, var(--kaimeter-primary, #2d3748));
-    }
-    .km-needle {
-      stroke: var(--accent, var(--kaimeter-accent, #38a169));
-    }
-  </style>
-
-  <!-- Meter face. The needle sits in the upper range: the mark is an
-       instrument being read, which is the whole product. -->
-  <rect x="24" y="24" width="52" height="52" rx="5" ry="5" fill="#2d3748" class="km-bg" />
-  <circle cx="50" cy="50" r="22" fill="#ffffff" class="km-surface" />
-
-  <!-- Dial rim, ticks and needle. -->
-  <path
-    d="M36 50a14 14 0 0 1 28 0"
-    fill="none"
-    stroke="#2d3748"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    class="km-ink"
-  />
-  <path
-    d="m50 50 8-8"
-    fill="none"
-    stroke="#38a169"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    class="km-needle"
-  />
-  <path
-    d="m38 44 2 2m8-6v2m12 2-2 2"
-    fill="none"
-    stroke="#2d3748"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    class="km-ink"
-  />
-  <circle cx="50" cy="50" r="3" fill="#38a169" class="km-accent" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="km-logo-title">
+  <title id="km-logo-title">Kaimeter</title>
+  <defs>
+    <clipPath id="km-logo-clip">
+      <circle cx="50" cy="50" r="44" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#km-logo-clip)">
+    <circle cx="50" cy="50" r="36" fill="none" stroke="#052E16" stroke-width="3" stroke-dasharray="6 6" opacity=".5" />
+    <circle cx="50" cy="50" r="28" fill="none" stroke="#22C55E" stroke-width="3" stroke-dasharray="6 6" opacity=".5" />
+    <circle cx="50" cy="50" r="20" fill="none" stroke="#052E16" stroke-width="3" stroke-dasharray="6 6" opacity=".5" />
+    <path d="M45 55v30m10-35v35" fill="none" stroke="#052E16" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="m45 85-7 5m7-5-3 7M55 85l-7 5m7-5-3 7" fill="none" stroke="#052E16" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M30 70q0-30 20-40t30-5" fill="none" stroke="#22C55E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="80" cy="25" r="10" fill="#052E16" />
+    <circle cx="84" cy="22" r="3" fill="#BBF7D0" />
+    <path d="m90 20 8 4-8 4z" fill="#22C55E" />
+    <path d="M20 92h60" fill="none" stroke="#22C55E" stroke-width="4" stroke-linecap="round" opacity=".6" />
+  </g>
 </svg>

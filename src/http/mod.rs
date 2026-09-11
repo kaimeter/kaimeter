@@ -134,13 +134,33 @@ mod tests {
         assert!(ct.starts_with("text/html"), "content-type was {ct}");
         let body = res.into_body().collect().await.unwrap().to_bytes();
         let html = std::str::from_utf8(&body).expect("wizard is utf-8");
-        // The document may open with an HTML comment (the SPDX header); a
-        // valid HTML5 doctype may be preceded by comments.
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains("Kaimeter"));
-        // With embedded locales the served asset is byte-identical to the
-        // repo file — one artifact, two delivery modes (file:// and `/`).
-        assert_eq!(html, WIZARD_TEMPLATE);
+        // One artifact, two delivery modes: the served document is the embedded
+        // template with the loaded dictionaries spliced into the marker region,
+        // and byte-identical to it everywhere else. Assert on the two edges
+        // rather than the whole document — the artifact carries the entire
+        // bundled frontend, so a failed equality assertion would dump ~450 kB of
+        // CSS into the test log.
+        let start = WIZARD_TEMPLATE
+            .find(crate::wizard::LOCALES_START_MARKER)
+            .expect("template carries the locale start marker");
+        let end = WIZARD_TEMPLATE
+            .find(crate::wizard::LOCALES_END_MARKER)
+            .expect("template carries the locale end marker")
+            + crate::wizard::LOCALES_END_MARKER.len();
+        assert!(
+            html.starts_with(&WIZARD_TEMPLATE[..start]),
+            "served wizard differs from the embedded template before the locale region"
+        );
+        assert!(
+            html.ends_with(&WIZARD_TEMPLATE[end..]),
+            "served wizard differs from the embedded template after the locale region"
+        );
+        assert!(
+            html.len() > WIZARD_TEMPLATE.len() - (end - start),
+            "the locale region should carry the injected dictionaries"
+        );
     }
 
     #[tokio::test]
