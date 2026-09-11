@@ -134,7 +134,9 @@ mod tests {
         assert!(ct.starts_with("text/html"), "content-type was {ct}");
         let body = res.into_body().collect().await.unwrap().to_bytes();
         let html = std::str::from_utf8(&body).expect("wizard is utf-8");
-        assert!(html.starts_with("<!DOCTYPE html>"));
+        // The document may open with an HTML comment (the SPDX header); a
+        // valid HTML5 doctype may be preceded by comments.
+        assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains("Kaimeter"));
         // With embedded locales the served asset is byte-identical to the
         // repo file — one artifact, two delivery modes (file:// and `/`).

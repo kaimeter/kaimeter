@@ -84,7 +84,9 @@ fn wizard_contains_no_network_surface() {
 
 #[test]
 fn wizard_is_a_single_self_contained_file() {
-    assert!(WIZARD.starts_with("<!DOCTYPE html>"));
+    // The file opens with the SPDX header comment; a valid HTML5 doctype may be
+    // preceded by comments, so assert presence rather than position.
+    assert!(WIZARD.contains("<!DOCTYPE html>"));
     assert!(WIZARD.contains("</html>"));
     assert!(WIZARD.contains("<style>"), "styles are inline");
     // Exactly one inline script, no external assets.

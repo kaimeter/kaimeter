@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright 2026 Keldrion, LLC and contributors -->
+
 # Contributing to Kaimeter
 
 We encourage contributions. This file documents the rules that keep the
@@ -12,13 +15,21 @@ Every human-authored source file begins with a two-line header:
 // Copyright 2026 Keldrion, LLC and contributors
 ```
 
-The comment syntax adapts to the file (`#` for Python and YAML, `<!-- -->`
-for HTML/XML, `--` for SQL, and so on). Files that do not carry headers:
-`LICENSE`, `NOTICE`, generated artifacts (lockfiles, build output), and data
-files — data is licensed separately under CC BY 4.0.
+The comment syntax adapts to the file (`#` for Python, YAML, TOML and
+Dockerfiles, `<!-- -->` for HTML/XML and Markdown, `--` for SQL, and so on).
 
-A pre-commit check fails any source file missing its SPDX identifier, so
-headers are stamped by the pipeline, not remembered by humans.
+Some files deliberately carry no header. `scripts/check-spdx.sh` holds the
+list, with a reason per entry: `LICENSE` and `NOTICE` (the licence texts),
+`Cargo.lock` (generated), `locales/*.json` (JSON has no comment syntax),
+`samples/*` (parser fixtures that tests `include_str!`, so a header would change
+the fixture), `*.png`, and the tool-configuration dotfiles.
+
+`scripts/check-spdx.sh` fails any other tracked file missing either line. It
+runs in CI as the `spdx-headers` job, and locally:
+
+```sh
+./scripts/check-spdx.sh
+```
 
 ## Provenance and AI assistance
 
@@ -29,6 +40,36 @@ and the commit history is the audit trail.
 
 Commits must be GPG-signed. See GitHub's guide to
 [signing commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
+
+### Signing from WSL against a Windows keyring
+
+If your private key lives on Windows and you work in WSL, you do not need to
+export it. WSL can drive the Windows GnuPG through interop, so the key never
+leaves the Windows keyring. Two things are required, and both are non-obvious:
+
+- **Path translation.** Git hands gpg a temporary file for each signature.
+  Windows `gpg.exe` cannot read WSL paths, so a wrapper must translate them.
+- **`TMPDIR` on the repository mount.** WSL `/tmp` is not reachable from Windows
+  over `\\wsl.localhost` — verified: signing still succeeds, but the resulting
+  signature cannot be verified afterwards, which is worse than an outright
+  failure.
+
+`bin/git` and `.githooks/gpg-windows` implement this. Use them via:
+
+```sh
+export PATH="$PWD/bin:$PATH"
+```
+
+Always confirm a signature rather than assuming it:
+
+```sh
+git verify-commit HEAD
+git verify-tag <tag>
+```
+
+`git log --format=%G?` reports the _tag's_ status for a tagged commit, not the
+commit's, so it can read `N` on a correctly signed commit. The two commands above
+are authoritative.
 
 ## Locale files
 

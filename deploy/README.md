@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright 2026 Keldrion, LLC and contributors -->
+
 # Deployment lanes (R18/R19)
 
 Kaimeter runs the same single static binary in every lane — storage is

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Keldrion, LLC and contributors
+
 # Kaimeter core server — example configuration.
 # Optional: every key has a default; environment variables override this file.
 # Copy to ./kaimeter.toml (or point KAIMETER_CONFIG at it) to use.

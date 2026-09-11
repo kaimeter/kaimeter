@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright 2026 Keldrion, LLC and contributors -->
+
 # Welcome to Kaimeter
 
 简体中文：[README.zh-CN.md](README.zh-CN.md)

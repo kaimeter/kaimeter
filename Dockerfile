@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Keldrion, LLC and contributors
+
 # Kaimeter core server — minimal container image.
 # Multi-stage: build the static release binary, then copy ONLY that binary
 # into an empty scratch image. Nothing else ships.

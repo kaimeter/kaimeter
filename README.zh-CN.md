@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright 2026 Keldrion, LLC and contributors -->
+
 # 欢迎使用 Kaimeter
 
 English: [README.md](README.md)
