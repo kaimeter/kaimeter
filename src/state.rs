@@ -20,14 +20,22 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Production constructor.
-    pub fn new(i18n: I18n, storage: Arc<dyn crate::db::Storage>) -> Self {
-        let wizard_html = Arc::new(crate::wizard::render(&i18n));
-        Self {
-            i18n: Arc::new(i18n),
-            wizard_html,
-            storage,
-        }
+    /// Production constructor. `wizard_html` is the optional development
+    /// override — see [`crate::config::Config::wizard_html`].
+    pub fn new(
+        i18n: I18n,
+        storage: Arc<dyn crate::db::Storage>,
+        wizard_html: Option<&std::path::Path>,
+    ) -> (Self, crate::wizard::WizardSource) {
+        let (html, source) = crate::wizard::render(&i18n, wizard_html);
+        (
+            Self {
+                i18n: Arc::new(i18n),
+                wizard_html: Arc::new(html),
+                storage,
+            },
+            source,
+        )
     }
 
     pub fn wizard_html(&self) -> &Arc<String> {
@@ -52,7 +60,7 @@ impl AppState {
         std::fs::create_dir_all(&dir).expect("mkdir");
         let db = crate::db::SqliteStorage::open(&dir.join("test.db")).expect("open db");
         db.migrate().expect("migrate");
-        let wizard_html = Arc::new(crate::wizard::render(&i18n));
+        let wizard_html = Arc::new(crate::wizard::render_embedded(&i18n));
         Self {
             i18n: Arc::new(i18n),
             wizard_html,

@@ -547,8 +547,9 @@ fn api_app(tag: &str) -> (axum::Router, Arc<kaimeter_core::db::SqliteStorage>) {
         kaimeter_core::db::SqliteStorage::open(&db_dir.join("kaimeter.db")).expect("open db"),
     );
     storage.migrate().expect("migrate to schema version 3");
-    let app =
-        kaimeter_core::http::router(kaimeter_core::state::AppState::new(i18n, storage.clone()));
+    let app = kaimeter_core::http::router(
+        kaimeter_core::state::AppState::new(i18n, storage.clone(), None).0,
+    );
     (app, storage)
 }
 

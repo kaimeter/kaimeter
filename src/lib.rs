@@ -74,7 +74,17 @@ pub async fn bootstrap(cfg: &Config) -> anyhow::Result<AppState> {
         tracing::info!(locale = %code, welcome = %i18n.t_or_en(&code, "welcome"), "locale loaded");
     }
 
-    Ok(AppState::new(i18n, Arc::new(storage)))
+    let (state, wizard_source) = AppState::new(i18n, Arc::new(storage), cfg.wizard_html.as_deref());
+    match &cfg.wizard_html {
+        Some(path) if wizard_source == crate::wizard::WizardSource::Disk => {
+            tracing::warn!(path = %path.display(), "wizard template loaded from disk (development override)");
+        }
+        Some(path) => {
+            tracing::warn!(path = %path.display(), "KAIMETER_WIZARD_HTML set but unreadable; using the embedded template");
+        }
+        None => tracing::info!(source = %wizard_source, "wizard template ready"),
+    }
+    Ok(state)
 }
 
 /// Bind `addr` and serve until SIGINT or SIGTERM arrives.
@@ -157,6 +167,7 @@ mod tests {
             addr: "127.0.0.1:0".to_string(),
             data_dir: root.join("data"),
             locales_dir: locales.clone(),
+            wizard_html: None,
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
         let state = rt.block_on(bootstrap(&cfg)).expect("bootstrap");
@@ -183,6 +194,7 @@ mod tests {
             addr: "127.0.0.1:0".to_string(),
             data_dir: root.join("data"),
             locales_dir: root.join("no-such-locales"),
+            wizard_html: None,
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
         // The directory is absent: bootstrap proceeds on the compiled-in
@@ -209,6 +221,7 @@ mod tests {
             addr: "127.0.0.1:0".to_string(),
             data_dir: root.join("data"),
             locales_dir: locales,
+            wizard_html: None,
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
         // The directory exists but is incomplete: configured locales are

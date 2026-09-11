@@ -11,7 +11,7 @@
 
 fn main() -> anyhow::Result<()> {
     let i18n = kaimeter_core::i18n::I18n::embedded()?;
-    let rendered = kaimeter_core::wizard::render(&i18n);
+    let rendered = kaimeter_core::wizard::render_embedded(&i18n);
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("web/wizard.html");
     std::fs::write(&path, rendered)?;
     println!("regenerated {}", path.display());

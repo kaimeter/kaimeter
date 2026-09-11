@@ -35,6 +35,15 @@ pub struct Config {
     pub data_dir: PathBuf,
     /// Directory containing `en.json`, `zh-CN.json`, `termbase.json`.
     pub locales_dir: PathBuf,
+    /// Development override: read the wizard template from this file at startup
+    /// instead of using the compiled-in copy.
+    ///
+    /// The template is embedded with `include_str!`, so without this a frontend
+    /// edit costs a full `cargo build` before the server will serve it. Set
+    /// `KAIMETER_WIZARD_HTML=web/wizard.html` to iterate on the frontend with
+    /// only a server restart. Unset in production: the shipped binary always
+    /// serves its embedded copy, and the `Dockerfile` never sets this.
+    pub wizard_html: Option<PathBuf>,
 }
 
 impl Default for Config {
@@ -43,6 +52,7 @@ impl Default for Config {
             addr: DEFAULT_ADDR.to_string(),
             data_dir: PathBuf::from(DEFAULT_DATA_DIR),
             locales_dir: PathBuf::from(DEFAULT_LOCALES_DIR),
+            wizard_html: None,
         }
     }
 }
@@ -85,6 +95,7 @@ impl Config {
                 "KAIMETER_ADDR" => cfg.addr = value.clone(),
                 "KAIMETER_DATA_DIR" => cfg.data_dir = PathBuf::from(value),
                 "KAIMETER_LOCALES_DIR" => cfg.locales_dir = PathBuf::from(value),
+                "KAIMETER_WIZARD_HTML" => cfg.wizard_html = Some(PathBuf::from(value)),
                 _ => {}
             }
         }

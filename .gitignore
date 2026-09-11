@@ -13,3 +13,10 @@ kaimeter.toml
 
 # Signing bridge for the Windows GnuPG keyring (scratch space).
 /.tmp/
+
+# Sandbox toolchain: workspace-local Rust toolchain and the Playwright browser
+# cache. Dev-only; see DEVELOPMENT.md.
+.toolchain/
+
+# Node dev dependencies (playwright, for scripts/screenshot.mjs).
+node_modules/

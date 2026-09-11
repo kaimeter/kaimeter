@@ -1,0 +1,15 @@
+{
+  "name": "kaimeter-dev",
+  "version": "0.1.6",
+  "private": true,
+  "description": "Development-only tooling for the Kaimeter repository. Not part of the shipped binary and not required to build it with cargo.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "shot": "node scripts/screenshot.mjs",
+    "browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

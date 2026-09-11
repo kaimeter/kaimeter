@@ -22,6 +22,8 @@ is_allowed() {
     case "$1" in
         LICENSE | NOTICE) return 0 ;;                 # the licence texts
         Cargo.lock) return 0 ;;                       # generated
+        package.json | package-lock.json | */package.json | */package-lock.json)
+            return 0 ;;                               # npm requires strict JSON; a comment is a parse error (verified)
         locales/en.json | locales/zh-CN.json | locales/termbase.json)
             return 0 ;;                               # JSON has no comments
         samples/*) return 0 ;;                        # fixtures include_str!-ed by tests

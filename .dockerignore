@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Keldrion, LLC and contributors
+
+# Build context exclusions. The Dockerfile copies only what the release build
+# needs; Node tooling is development-only and must never reach the image.
+
+node_modules
+**/node_modules
+target
+dist
+data
+secrets
+.tmp
+.toolchain
+.git
+.gitignore
+*.bundle
+*.db

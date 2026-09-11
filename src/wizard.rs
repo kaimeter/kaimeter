@@ -15,6 +15,8 @@
 //! wizard UI without a rebuild, exactly as it does for backend messages.
 
 use crate::i18n::I18n;
+use std::fs;
+use std::path::Path;
 
 /// The wizard asset embedded at compile time — one artifact, two delivery
 /// modes (served at `/`, or opened directly from `file://`).
@@ -24,11 +26,67 @@ pub const WIZARD_TEMPLATE: &str = include_str!("../web/wizard.html");
 const LOCALES_START: &str = "/*kaimeter-locales-start*/";
 const LOCALES_END: &str = "/*kaimeter-locales-end*/";
 
+/// Where the wizard template came from, for startup logging.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WizardSource {
+    /// Read from the path in [`crate::config::Config::wizard_html`] (dev only).
+    Disk,
+    /// The copy embedded at compile time.
+    Embedded,
+}
+
+impl std::fmt::Display for WizardSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Disk => f.write_str("disk"),
+            Self::Embedded => f.write_str("embedded"),
+        }
+    }
+}
+
+/// Whether `path` looks like a wizard template: it must carry the locale
+/// markers, since [`inject`] panics without them. Used to reject a misconfigured
+/// `KAIMETER_WIZARD_HTML` at startup rather than at the first page load.
+#[must_use]
+pub fn is_template(html: &str) -> bool {
+    region(html).is_some()
+}
+
+/// The template to render: `path` when it is `Some` and readable, otherwise the
+/// embedded copy.
+///
+/// The embedded template is the product: it is what ships inside the binary and
+/// what `file://` users open. The disk path exists so a frontend edit does not
+/// cost a `cargo build` — see [`crate::config::Config::wizard_html`].
+fn template(path: Option<&Path>) -> (&'static str, WizardSource) {
+    if let Some(path) = path {
+        if let Ok(html) = fs::read_to_string(path) {
+            // Leaked deliberately: the template lives for the process lifetime,
+            // and this keeps the rendered type identical to the embedded path.
+            let html: &'static str = Box::leak(html.into_boxed_str());
+            return (html, WizardSource::Disk);
+        }
+    }
+    (WIZARD_TEMPLATE, WizardSource::Embedded)
+}
+
 /// Render the wizard for the loaded i18n state: the template with its
 /// dictionary region replaced by the state's `ui.*` dictionaries.
-pub fn render(i18n: &I18n) -> String {
+pub fn render(i18n: &I18n, path: Option<&Path>) -> (String, WizardSource) {
+    let (tpl, source) = template(path);
+    (render_template(tpl, i18n), source)
+}
+
+/// Render the embedded template. This is what `regen-wizard` writes to disk:
+/// the committed `web/wizard.html` is always the embedded form, never a
+/// development override.
+pub fn render_embedded(i18n: &I18n) -> String {
+    render_template(WIZARD_TEMPLATE, i18n)
+}
+
+fn render_template(tpl: &str, i18n: &I18n) -> String {
     let json = serde_json::to_string_pretty(&i18n.ui_dictionaries()).expect("serializable maps");
-    inject(WIZARD_TEMPLATE, &json)
+    inject(tpl, &json)
 }
 
 /// Splice `json` between the locale markers, replacing whatever the region
@@ -71,7 +129,7 @@ mod tests {
         // someone edited one side without regenerating.
         let i18n = I18n::embedded().expect("embedded locales");
         assert_eq!(
-            render(&i18n),
+            render_embedded(&i18n),
             WIZARD_TEMPLATE,
             "web/wizard.html is stale — edit locales/*.json, then run \
              `cargo run --bin regen-wizard`"
@@ -87,7 +145,7 @@ mod tests {
         std::fs::write(dir.join("zh-CN.json"), r#"{"ui.dash":"驾驶舱"}"#).expect("zh");
         std::fs::write(dir.join("termbase.json"), r#"{"terms":{}}"#).expect("termbase");
         let i18n = I18n::load(&dir).expect("load");
-        let served = render(&i18n);
+        let served = render_embedded(&i18n);
         assert!(served.contains("Cockpit"), "disk ui override is served");
         assert!(served.contains("驾驶舱"));
         assert_ne!(served, WIZARD_TEMPLATE);
