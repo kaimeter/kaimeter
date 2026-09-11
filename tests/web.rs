@@ -40,11 +40,13 @@ const EFAPIAO_FIXTURE: &str = include_str!(concat!(
 #[test]
 fn wizard_contains_no_network_surface() {
     // No absolute URLs of any kind — nothing third-party, nothing remote.
+    // `<link ` is not banned outright: the favicon is a `<link rel="icon">`
+    // whose href is a `data:` URI, which makes no request. What is banned is a
+    // link that references anything external.
     let banned = [
         "http://",
         "https://",
         "<script src",
-        "<link ",
         "@import",
         "import(",
         "XMLHttpRequest",
@@ -58,6 +60,22 @@ fn wizard_contains_no_network_surface() {
             "wizard must not contain {b:?} — offline by construction (R22)"
         );
     }
+    // Any <link> must be self-contained: a data: URI (the favicon), never a
+    // file or remote reference that would break the single-file artifact or
+    // make a request.
+    let mut links = 0;
+    let mut from = 0;
+    while let Some(pos) = WIZARD[from..].find("<link ") {
+        let at = from + pos;
+        let tag = &WIZARD[at..WIZARD[at..].find('>').map_or(WIZARD.len(), |e| at + e)];
+        assert!(
+            tag.contains("href=\"data:"),
+            "every <link> must use a data: URI (self-contained); found: {tag}"
+        );
+        links += 1;
+        from = at + 6;
+    }
+    assert!(links >= 1, "the favicon <link> is expected to be present");
     // fetch( is allowed ONLY for same-origin relative /api/ calls (the
     // persistence contract). Every fetch target must start
     // with "/api/" or the template-literal form `/api/`.
@@ -80,6 +98,43 @@ fn wizard_contains_no_network_surface() {
         i = at + 6 + end.min(bytes.len());
     }
     assert!(fetches >= 2, "server bridge expected (role + consignments)");
+}
+
+#[test]
+fn brand_mark_viewbox_is_tight_to_its_geometry() {
+    // The mark draws a dial arc centred at (50,50) with radius 14 and a needle
+    // to (58,42), stroked at width 4 with round caps. Its ink therefore spans
+    // x 34..66, y 34..53. A viewBox of "0 0 100 100" would make the mark occupy
+    // ~7% of its own box, so every size change scales mostly empty space.
+    // Pin the tight box so that cannot silently come back.
+    let mark = WIZARD
+        .split_once("class=\"brand-mark\"")
+        .expect("the brand mark is present")
+        .1;
+    let view_box = mark
+        .split_once("viewBox=\"")
+        .expect("the brand mark has a viewBox")
+        .1
+        .split_once('"')
+        .expect("viewBox is quoted")
+        .0;
+    let parts: Vec<f64> = view_box
+        .split_whitespace()
+        .map(|v| v.parse().expect("viewBox numbers"))
+        .collect();
+    assert_eq!(parts.len(), 4, "viewBox needs four numbers: {view_box:?}");
+    let (vx, vy, vw, vh) = (parts[0], parts[1], parts[2], parts[3]);
+
+    // Tolerate a unit of slack, but not tens of units of padding.
+    let (ink_x, ink_y, ink_w, ink_h) = (34.0, 34.0, 32.0, 19.0);
+    assert!(
+        (vx - ink_x).abs() <= 1.0 && (vy - ink_y).abs() <= 1.0,
+        "brand-mark viewBox origin {vx} {vy} is not tight to the ink at {ink_x} {ink_y}"
+    );
+    assert!(
+        (vw - ink_w).abs() <= 1.0 && (vh - ink_h).abs() <= 1.0,
+        "brand-mark viewBox size {vw}x{vh} is not tight to the ink at {ink_w}x{ink_h}"
+    );
 }
 
 #[test]
