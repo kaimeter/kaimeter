@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { api } from '@/lib/api';
 import { tonnes } from '@/lib/format';
 import { RichText } from '@/components/rich-text';
+import { CbamPrimer, EtsExplainer, GlossaryTerm, Hint } from '@/components/glossary';
 import { useT } from '@/lib/use-i18n';
 
 /** The statutory exemption line, in tonnes (R1, Reg (EU) 2025/2083 Art 2a). */
@@ -21,21 +21,14 @@ const LINE_TONNES = 50;
 /** The declaration year the dashboard is scoped to. */
 const YEAR = new Date().getFullYear();
 
-function Stat({ label, value, unit, hint, tip, icon: Icon }) {
+function Stat({ label, value, unit, hint, tipKey, icon: Icon }) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardDescription className="flex items-center gap-1.5">
           {Icon ? <Icon className="size-3.5" /> : null}
           {label}
-          {tip ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="size-3.5 cursor-help opacity-60" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">{tip}</TooltipContent>
-            </Tooltip>
-          ) : null}
+          {tipKey ? <Hint labelKey={tipKey} /> : null}
         </CardDescription>
         <CardTitle className="text-3xl font-semibold tabular-nums">
           {value}
@@ -111,18 +104,18 @@ export function Dashboard({ serverPrice }) {
           value={tonnes(netT)}
           unit="t"
           icon={Scale}
-          tip={t('tipMass')}
+          tipKey="tipMass"
           hint={`${t('netMass')}: ${netMassKg.toLocaleString()} kg`}
         />
         <Stat
-          label={t('certCost')}
+          label={<GlossaryTerm termKey="tipExposure" labelKey="certCost" />}
           value={
             state.exposure?.totals?.net_eur != null
               ? `€${Number(state.exposure.totals.net_eur).toLocaleString()}`
               : '—'
           }
           icon={Euro}
-          tip={t('tipExposure')}
+          tipKey="tipExposure"
           hint={
             price != null
               ? t('exposureNote', { p: Number(price).toFixed(2) })
@@ -130,28 +123,27 @@ export function Dashboard({ serverPrice }) {
           }
         />
         <Stat
-          label={t('etsCached')}
+          label={<GlossaryTerm termKey="tipEts" labelKey="etsCached" />}
           value={price != null ? `€${Number(price).toFixed(2)}` : '—'}
           unit="/tCO₂e"
           icon={Gauge}
-          tip={t('tipEts')}
+          tipKey="tipEts"
           hint={serverPrice?.stale ? t('unverified') : null}
         />
         <Stat
-          label={t('factorLbl')}
+          label={<GlossaryTerm termKey="tipExposure" labelKey="factorLbl" />}
           value={
             state.exposure?.factor != null
               ? `${(state.exposure.factor * 100).toFixed(1)}%`
               : '—'
           }
           icon={ArrowUpRight}
-          tip={t('factorSchedule')}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t('massLineTitle')}</CardTitle>
+          <CardTitle className="text-base"><GlossaryTerm termKey="tipEmissions" labelKey="massLineTitle" /></CardTitle>
           <CardDescription className="flex items-center gap-2">
             <Badge variant="outline" className="font-mono text-[11px]">
               {t('lineLabel')}
@@ -176,6 +168,9 @@ export function Dashboard({ serverPrice }) {
           </p>
         </CardContent>
       </Card>
+
+      <CbamPrimer />
+      <EtsExplainer />
 
       {state.priceNeeded ? (
         <Alert>

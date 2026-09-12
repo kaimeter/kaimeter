@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import { api } from '@/lib/api';
 import { RichText } from '@/components/rich-text';
+import { Hint } from '@/components/glossary';
 import { useT } from '@/lib/use-i18n';
 
 /** The eight mandatory declaration fields (R2/R9). The export fails closed. */
@@ -41,7 +42,10 @@ export function Exports() {
             <FileJson className="size-4" />
             {t('exp')}
           </CardTitle>
-          <CardDescription>{t('exportSub')}</CardDescription>
+          <CardDescription className="flex items-center gap-1.5">
+            {t('exportSub')}
+            <Hint labelKey="tipLeaves" />
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
           <Button onClick={run} disabled={pending}>

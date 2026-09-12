@@ -16,6 +16,20 @@ import { createElement, Fragment } from 'react';
 
 const ALLOWED = new Set(['b', 'strong', 'i', 'em', 'code']);
 
+/** The five entities the locale files actually use. */
+const ENTITIES = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&nbsp;': '\u00a0',
+};
+
+function decodeEntities(text) {
+  return text.replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, (m) => ENTITIES[m] ?? m);
+}
+
 /** `text <b>bold</b> more` -> ['text ', <b>bold</b>, ' more'] */
 function parse(text) {
   const parts = [];
@@ -57,8 +71,9 @@ function parse(text) {
 }
 
 export function RichText({ text }) {
-  if (!text || !/[<&]/.test(text)) return text ?? null;
-  return createElement(Fragment, null, ...parse(text));
+  if (!text) return null;
+  if (!/[<&]/.test(text)) return text;
+  return createElement(Fragment, null, ...parse(decodeEntities(text)));
 }
 
 /** Strip inline markup, for places that need a plain string (aria, titles). */

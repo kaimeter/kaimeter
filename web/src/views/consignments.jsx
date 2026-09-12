@@ -14,6 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { api } from '@/lib/api';
+import { GlossaryTerm, Hint } from '@/components/glossary';
 import { useT } from '@/lib/use-i18n';
 
 /** Sample CN codes. The full catalogue is reference data (see /api/reference). */
@@ -54,12 +55,18 @@ export function Consignments() {
             <PackagePlus className="size-4" />
             {t('newConsLbl')}
           </CardTitle>
-          <CardDescription>{t('consSub')}</CardDescription>
+          <CardDescription className="flex items-center gap-1.5">
+            <GlossaryTerm termKey="tipDossier" labelKey="consSub" />
+            <Hint labelKey="tipDossier" />
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="cn">{t('cnCode')}</Label>
+              <Label htmlFor="cn" className="gap-1.5">
+                <GlossaryTerm termKey="tipCn" labelKey="cnCode" />
+                <Hint labelKey="tipCn" />
+              </Label>
               <Select value={cn} onValueChange={setCn}>
                 <SelectTrigger id="cn"><SelectValue /></SelectTrigger>
                 <SelectContent>
