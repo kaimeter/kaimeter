@@ -16,6 +16,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Footer } from '@/components/footer';
 import { Mark } from '@/components/logo';
 import { RichText } from '@/components/rich-text';
 import { api } from '@/lib/api';
@@ -101,6 +102,9 @@ function OfflineBadge() {
   );
 }
 
+/** Id of the primer card, so the footer can jump to it. */
+const PRIMER_ID = 'kaimeter-primer';
+
 export function App() {
   const t = useT();
   const [role, setRole] = useState(readStoredRole);
@@ -128,12 +132,20 @@ export function App() {
     };
   }, []);
 
+  // The primer lives on the dashboard, so reaching it may mean switching view.
+  const showPrimer = () => {
+    setView('dashboard');
+    requestAnimationFrame(() => {
+      document.getElementById(PRIMER_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const activeRole = ROLES.find((r) => r.id === role) ?? ROLES[0];
   const enabledViews = activeRole.views;
   const ActiveView = VIEWS[view]?.Component ?? Dashboard;
 
   return (
-    <div className="bg-background text-foreground min-h-svh">
+    <div id="top" className="bg-background text-foreground flex min-h-svh flex-col">
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 border-b backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-6">
           <div className="flex items-center gap-2.5">
@@ -163,7 +175,7 @@ export function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight">{t(activeRole.labelKey)}</h1>
           <p className="text-muted-foreground mt-1 text-sm">{t(activeRole.descKey)}</p>
@@ -192,6 +204,8 @@ export function App() {
           })}
         </Tabs>
       </main>
+
+      <Footer onShowPrimer={showPrimer} />
     </div>
   );
 }

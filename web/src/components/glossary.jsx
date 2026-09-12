@@ -102,7 +102,7 @@ export function CbamPrimer({ variant = 'card' }) {
   }
 
   return (
-    <Card>
+    <Card id="kaimeter-primer" className="scroll-mt-24">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Info className="size-4" />
