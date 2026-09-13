@@ -22,7 +22,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use base64::Engine as _;
 use rand_core::RngCore as _;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::calendar::{self, Quarter};
@@ -37,7 +37,7 @@ use crate::domain::types::Consignment;
 use crate::export::{
     apply_masks, build_declaration, merkle_root, preflight_validate, preview, seal_pack, to_vc_jwt,
     to_vp_json_ld, verify_vp_json_ld, DeclarationField, FieldMask, PackContent, SchemaEntry,
-    REQUIRED_DECLARATION_FIELDS,
+    SealedPack, REQUIRED_DECLARATION_FIELDS,
 };
 use crate::math::{
     cbam_factor, consignment_emissions_default, gross_exposure, net_exposure, DeMinimisTracker,
@@ -272,6 +272,8 @@ async fn reference_defaults(
 
 /// POST body: a consignment plus the two persistence-side optionals.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct NewConsignmentBody {
     #[serde(flatten)]
     consignment: Consignment,
@@ -328,6 +330,7 @@ async fn create_consignment(State(state): State<AppState>, body: Bytes) -> ApiRe
         Some(code) => customs::classify(code).map_err(ApiError::from)?,
         None => customs::classify("40 00").map_err(ApiError::from)?,
     };
+    ensure_unmapped_installation(storage).map_err(ApiError::from)?;
     let row_id = store::insert_consignment(
         storage,
         &body.consignment,
@@ -375,6 +378,8 @@ async fn list_consignments_api(
 
 /// POST body for the SAD/H1 bulk import: either `xml` or `csv`.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct ImportSadBody {
     xml: Option<String>,
     csv: Option<String>,
@@ -450,6 +455,18 @@ async fn import_sad(State(state): State<AppState>, body: Bytes) -> ApiResult {
 
 // De-minimis (R1)
 
+/// What `/api/deminimis` returns (R1).
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct DeminimisResponse {
+    year: i32,
+    ytd_net_mass_kg: f64,
+    threshold_kg: f64,
+    crossed: bool,
+    is_exempt: bool,
+}
+
 /// `GET /api/deminimis?year=2026` — the 50 t calendar-year net-mass tracker
 /// over that year's LIABLE consignments only (R15: deferred/tracked/excluded
 /// regimes never count; exempt origins are a later overlay).
@@ -466,18 +483,32 @@ async fn deminimis(
     }
     Ok((
         StatusCode::OK,
-        Json(json!({
-            "year": year,
-            "ytd_net_mass_kg": tracker.ytd_net_mass_kg(),
-            "threshold_kg": DE_MINIMIS_THRESHOLD_TONNES * 1000.0,
-            "crossed": tracker.crossed(),
-            "is_exempt": tracker.is_exempt(),
-        })),
+        Json(DeminimisResponse {
+            year,
+            ytd_net_mass_kg: tracker.ytd_net_mass_kg(),
+            threshold_kg: DE_MINIMIS_THRESHOLD_TONNES * 1000.0,
+            crossed: tracker.crossed(),
+            is_exempt: tracker.is_exempt(),
+        }),
     )
         .into_response())
 }
 
 // Exposure (R3/R4/R7)
+
+/// The cached ETS price as the API presents it: the number plus the flags a
+/// declarant needs to judge it (R7/R14). One shape, shared by `/api/price` and
+/// `/api/exposure`, so the client reads the price the same way from both.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct PriceView {
+    eur_per_tco2e: f64,
+    /// When the price was cached; absent when the caller supplied `ets_price`.
+    as_of: Option<String>,
+    manual: bool,
+    stale: bool,
+}
 
 /// Resolve the ETS price for a projection: the explicit query parameter wins,
 /// then the cached price with its staleness flag; nowhere → 409 (R7: the
@@ -485,7 +516,7 @@ async fn deminimis(
 fn resolve_price(
     storage: &dyn Storage,
     q: &BTreeMap<String, String>,
-) -> Result<(f64, bool, bool), ApiError> {
+) -> Result<PriceView, ApiError> {
     match q.get("ets_price") {
         Some(raw) => {
             let eur: f64 = raw.trim().parse().map_err(|_| {
@@ -494,13 +525,62 @@ fn resolve_price(
                     format!("query parameter `ets_price` must be a number, got `{raw}`"),
                 )
             })?;
-            Ok((eur, false, false))
+            Ok(PriceView {
+                eur_per_tco2e: eur,
+                as_of: None,
+                manual: false,
+                stale: false,
+            })
         }
         None => match store::get_price(storage).map_err(ApiError::from)? {
-            Some((eur, _as_of, manual, stale)) => Ok((eur, stale, manual)),
+            Some((eur, as_of, manual, stale)) => Ok(PriceView {
+                eur_per_tco2e: eur,
+                as_of: Some(as_of),
+                manual,
+                stale,
+            }),
             None => Err(ApiError::no_price()),
         },
     }
+}
+
+/// One projected consignment. A row the core cannot project carries `error`
+/// instead of the money fields — and never fails the whole request.
+#[derive(Serialize, Default)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct ExposureRow {
+    row_id: i64,
+    cn_code: String,
+    net_mass_kg: f64,
+    import_date: Option<String>,
+    emissions_tco2e: Option<f64>,
+    gross_eur: Option<f64>,
+    net_eur: Option<f64>,
+    error: Option<String>,
+}
+
+/// Year totals for `/api/exposure`.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct ExposureTotals {
+    emissions_tco2e: f64,
+    gross_eur: f64,
+    net_eur: f64,
+}
+
+/// What `/api/exposure` returns (R3/R4/R7).
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct ExposureResponse {
+    year: i32,
+    formula: String,
+    consignments: Vec<ExposureRow>,
+    totals: ExposureTotals,
+    price: PriceView,
+    factor: f64,
 }
 
 /// `GET /api/exposure?year=2026&formula=A|B&ets_price=80.5` — per-consignment
@@ -524,12 +604,13 @@ async fn exposure(
         }
     };
     let storage: &dyn Storage = state.storage().as_ref();
-    let (price_eur, stale, manual) = resolve_price(storage, &q)?;
+    let price = resolve_price(storage, &q)?;
+    let price_eur = price.eur_per_tco2e;
     let factor = cbam_factor(year).map_err(ApiError::from)?;
     let lookup = Lookup::from_storage(storage).map_err(ApiError::from)?;
     let listed = store::list_consignments(storage, year, None).map_err(ApiError::from)?;
 
-    let mut rows_out = Vec::new();
+    let mut rows_out: Vec<ExposureRow> = Vec::new();
     let (mut total_emissions, mut total_gross, mut total_net) = (0.0_f64, 0.0_f64, 0.0_f64);
     for record in listed.iter().filter(|r| r.status == "LIABLE") {
         let c = &record.consignment;
@@ -537,12 +618,13 @@ async fn exposure(
         // per-row error note, never a failed request (the rest of the year
         // still projects).
         let Some(default) = lookup.defaults_for_cn(&c.cn_code).first().copied() else {
-            rows_out.push(json!({
-                "row_id": record.row_id,
-                "cn_code": c.cn_code,
-                "net_mass_kg": c.net_mass_kg,
-                "error": DomainError::NoDefaultForCnCode(c.cn_code.clone()).to_string(),
-            }));
+            rows_out.push(ExposureRow {
+                row_id: record.row_id,
+                cn_code: c.cn_code.clone(),
+                net_mass_kg: c.net_mass_kg,
+                error: Some(DomainError::NoDefaultForCnCode(c.cn_code.clone()).to_string()),
+                ..Default::default()
+            });
             continue;
         };
         let emissions = match consignment_emissions_default(
@@ -552,12 +634,13 @@ async fn exposure(
         ) {
             Ok(emissions) => emissions,
             Err(err) => {
-                rows_out.push(json!({
-                    "row_id": record.row_id,
-                    "cn_code": c.cn_code,
-                    "net_mass_kg": c.net_mass_kg,
-                    "error": err.to_string(),
-                }));
+                rows_out.push(ExposureRow {
+                    row_id: record.row_id,
+                    cn_code: c.cn_code.clone(),
+                    net_mass_kg: c.net_mass_kg,
+                    error: Some(err.to_string()),
+                    ..Default::default()
+                });
                 continue;
             }
         };
@@ -570,31 +653,36 @@ async fn exposure(
         total_emissions += emissions;
         total_gross += gross;
         total_net += net;
-        rows_out.push(json!({
-            "row_id": record.row_id,
-            "cn_code": c.cn_code,
-            "net_mass_kg": c.net_mass_kg,
-            "import_date": c.import_date,
-            "emissions_tco2e": emissions,
-            "gross_eur": gross,
-            "net_eur": net,
-        }));
+        rows_out.push(ExposureRow {
+            row_id: record.row_id,
+            cn_code: c.cn_code.clone(),
+            net_mass_kg: c.net_mass_kg,
+            import_date: Some(c.import_date.clone()),
+            emissions_tco2e: Some(emissions),
+            gross_eur: Some(gross),
+            net_eur: Some(net),
+            ..Default::default()
+        });
     }
 
     Ok((
         StatusCode::OK,
-        Json(json!({
-            "year": year,
-            "formula": match formula { Formula::A => "A", Formula::B => "B" },
-            "consignments": rows_out,
-            "totals": {
-                "emissions_tco2e": total_emissions,
-                "gross_eur": total_gross,
-                "net_eur": total_net,
+        Json(ExposureResponse {
+            year,
+            formula: match formula {
+                Formula::A => "A",
+                Formula::B => "B",
+            }
+            .to_string(),
+            consignments: rows_out,
+            totals: ExposureTotals {
+                emissions_tco2e: total_emissions,
+                gross_eur: total_gross,
+                net_eur: total_net,
             },
-            "price": { "eur": price_eur, "stale": stale, "manual": manual },
-            "factor": factor,
-        })),
+            price,
+            factor,
+        }),
     )
         .into_response())
 }
@@ -766,6 +854,8 @@ async fn delete_role(State(state): State<AppState>) -> ApiResult {
 
 /// One masking entry: a bare field name (redact) or a name + policy object.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[serde(untagged)]
 enum MaskSpec {
     Name(String),
@@ -798,6 +888,8 @@ impl MaskSpec {
 
 /// The declaration export request.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct ExportBody {
     year: i32,
     eori: Option<String>,
@@ -1022,6 +1114,8 @@ fn pack_signing_key(storage: &dyn Storage) -> Result<ed25519_dalek::SigningKey, 
 /// the sealed field values — descriptors only; the documents themselves stay
 /// on the mill's machine, R16/R21).
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct PackSealBody {
     installation_ref: String,
     cn_code: String,
@@ -1030,6 +1124,18 @@ struct PackSealBody {
     #[serde(default)]
     evidence_leaves: Vec<String>,
     valid_until_iso: Option<String>,
+}
+
+/// What `/api/pack/seal` returns: the sealed pack plus the two encodings of the
+/// same signature that leave for the buyer (R21).
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct PackSealResponse {
+    pack: SealedPack,
+    vp: Value,
+    vc_jwt: String,
+    did: String,
 }
 
 /// `POST /api/pack/seal` — build and seal a data pack (R21): Merkle root
@@ -1106,12 +1212,12 @@ async fn seal_pack_api(State(state): State<AppState>, body: Bytes) -> ApiResult 
 
     Ok((
         StatusCode::CREATED,
-        Json(json!({
-            "pack": sealed,
-            "vp": vp,
-            "vc_jwt": vc_jwt,
-            "did": did,
-        })),
+        Json(PackSealResponse {
+            pack: sealed,
+            vp,
+            vc_jwt,
+            did,
+        }),
     )
         .into_response())
 }
@@ -1119,6 +1225,8 @@ async fn seal_pack_api(State(state): State<AppState>, body: Bytes) -> ApiResult 
 /// The pack-verification request body: a Verifiable Presentation exactly as
 /// exported (the verifier's copy of the core never sees anything else).
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct PackVerifyBody {
     vp: Value,
 }
@@ -1281,22 +1389,33 @@ async fn create_attachment(State(state): State<AppState>, body: Bytes) -> ApiRes
 // ETS price cache (R7/R14)
 
 /// `GET /api/price` — the cached price with its flags, or `null`.
+#[derive(Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+struct PriceResponse {
+    price: Option<PriceView>,
+}
+
 async fn get_price_api(State(state): State<AppState>) -> ApiResult {
     let price = store::get_price(state.storage().as_ref()).map_err(ApiError::from)?;
-    let value = match price {
-        Some((eur, as_of, manual, stale)) => json!({
-            "eur_per_tco2e": eur,
-            "as_of": as_of,
-            "manual": manual,
-            "stale": stale,
+    Ok((
+        StatusCode::OK,
+        Json(PriceResponse {
+            price: price.map(|(eur, as_of, manual, stale)| PriceView {
+                eur_per_tco2e: eur,
+                as_of: Some(as_of),
+                manual,
+                stale,
+            }),
         }),
-        None => Value::Null,
-    };
-    Ok((StatusCode::OK, Json(json!({ "price": value }))).into_response())
+    )
+        .into_response())
 }
 
 /// The manual price-entry body.
 #[derive(Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 struct PriceBody {
     eur_per_tco2e: f64,
     as_of: String,

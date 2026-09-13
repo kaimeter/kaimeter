@@ -56,6 +56,25 @@ jobs:
       - run: npm --prefix web ci
       - run: npm --prefix web run build
 
+  types:
+    name: typescript contract + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      # `--features ts` derives web/.generated/*.ts from the API's own request
+      # and response types (ts-rs); typecheck then holds the JS client to them.
+      # Without this step the bindings do not exist and the client is unchecked.
+      - run: cargo test --features ts --lib
+      - run: npm --prefix web run typecheck
+
   clippy:
     name: cargo clippy -D warnings
     runs-on: ubuntu-latest

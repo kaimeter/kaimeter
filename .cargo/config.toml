@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Keldrion, LLC and contributors
+
+# `cargo test --features ts` writes the TypeScript wire contract derived from the
+# API's own types. It goes next to the other frontend build outputs, outside
+# web/src, so regenerating it never invalidates the cargo watch set (build.rs).
+[env]
+TS_RS_EXPORT_DIR = { value = "web/.generated", relative = true }

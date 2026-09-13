@@ -11,7 +11,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 
 setLocale(detectInitialLocale());
 
-createRoot(document.getElementById('root')).render(
+createRoot(/** @type {HTMLElement} */ (document.getElementById('root'))).render(
   <StrictMode>
     <TooltipProvider>
       <App />

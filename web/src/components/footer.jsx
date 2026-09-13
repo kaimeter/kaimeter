@@ -36,7 +36,7 @@ export const PROJECT = {
  */
 export const FOOTER_LEGAL = [];
 
-function FooterLink({ href, children, external }) {
+function FooterLink({ href, children, external = false }) {
   return (
     <a
       href={href}

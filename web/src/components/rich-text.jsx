@@ -65,6 +65,7 @@ function parse(text) {
   // Unbalanced markup: emit whatever is still open rather than losing text.
   while (stack.length) {
     const open = stack.pop();
+    if (!open) break;
     parts.unshift(...open.children);
   }
   return parts;

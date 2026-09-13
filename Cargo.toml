@@ -20,6 +20,13 @@ default-run = "kaimeter"
 name = "kaimeter"
 path = "src/main.rs"
 
+[features]
+# Generates the TypeScript wire contract from the API's own request/response
+# types (`cargo test --features ts`, written to web/.generated/). Off by default
+# so the shipped binary — and its SBOM — carry no typegen dependency. The
+# frontend typecheck consumes the generated files; see web/jsconfig.json.
+ts = ["dep:ts-rs"]
+
 [dependencies]
 aes-gcm = "0.10.3"
 anyhow = "1"
@@ -39,6 +46,9 @@ toml = "0.8"
 tower = { version = "0.5", features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Typegen only (feature `ts`): derives the frontend's declarations from these
+# very structs, so the client cannot drift from the handlers.
+ts-rs = { version = "9", optional = true, features = ["serde-json-impl"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

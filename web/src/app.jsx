@@ -52,7 +52,10 @@ const ROLE_STORAGE_KEY = 'kaimeter.role';
 function readStoredRole() {
   try {
     const stored = globalThis.localStorage?.getItem(ROLE_STORAGE_KEY);
-    return ROLES.some((r) => r.id === stored) ? stored : 'importer';
+    // A stored value that is not a known persona (or not a string at all) is
+    // treated as a first run rather than trusted.
+    if (typeof stored === 'string' && ROLES.some((r) => r.id === stored)) return stored;
+    return 'importer';
   } catch {
     return 'importer';
   }
@@ -109,7 +112,9 @@ export function App() {
   const t = useT();
   const [role, setRole] = useState(readStoredRole);
   const [view, setView] = useState(() => ROLES.find((r) => r.id === readStoredRole())?.views[0]);
-  const [serverPrice, setServerPrice] = useState(null);
+  const [serverPrice, setServerPrice] = useState(
+    /** @type {import('@generated/PriceResponse').PriceResponse | null} */ (null),
+  );
 
   useEffect(() => {
     try {

@@ -21,7 +21,19 @@ const LINE_TONNES = 50;
 /** The declaration year the dashboard is scoped to. */
 const YEAR = new Date().getFullYear();
 
-function Stat({ label, value, unit, hint, tipKey, icon: Icon }) {
+/**
+ * A headline figure with an optional unit, hint and glossary tip.
+ *
+ * @param {{
+ *   label: any,
+ *   value: any,
+ *   unit?: string | null,
+ *   hint?: any,
+ *   tipKey?: string | null,
+ *   icon?: any,
+ * }} props
+ */
+function Stat({ label, value, unit = null, hint = null, tipKey = null, icon: Icon = null }) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -48,12 +60,20 @@ function Stat({ label, value, unit, hint, tipKey, icon: Icon }) {
 
 export function Dashboard({ serverPrice }) {
   const t = useT();
-  const [state, setState] = useState({
-    status: 'loading',
-    priceNeeded: false,
-    deMinimis: null,
-    exposure: null,
-  });
+  const [state, setState] = useState(
+    /**
+     * The projection state: either of the two payloads is absent until it
+     * arrives, and `status` says whether the core was reachable at all.
+     *
+     * @type {{
+     *   status: string,
+     *   priceNeeded: boolean,
+     *   deMinimis: import('@generated/DeminimisResponse').DeminimisResponse | null,
+     *   exposure: import('@generated/ExposureResponse').ExposureResponse | null,
+     * }}
+     */
+    ({ status: 'loading', priceNeeded: false, deMinimis: null, exposure: null }),
+  );
 
   useEffect(() => {
     if (!api.served) {
@@ -65,21 +85,29 @@ export function Dashboard({ serverPrice }) {
     // when its cache is cold, so fetch the price first and pass it through.
     (async () => {
       const priceRes = await api.get.price();
-      const price = priceRes.ok ? priceRes.data?.price?.eur : undefined;
+      const price = priceRes.ok ? priceRes.data.price?.eur_per_tco2e : undefined;
       const d = await api.get.deminimis(YEAR);
       // Only ask for exposure when a price exists: the core refuses to guess
       // one, and a call that can only fail is not worth making.
-      const e = price != null
-        ? await api.get.exposure('72083800', YEAR, price)
-        : { ok: false, status: 409 };
+      const e = price != null ? await api.get.exposure(YEAR, price) : null;
       if (cancelled) return;
+      // `priceNeeded` is a supported state, not an error: the core refuses to
+      // guess a carbon price, so without one there is nothing to project.
+      let priceNeeded = false;
+      /** @type {import('@generated/ExposureResponse').ExposureResponse | null} */
+      let exposure = null;
+      if (e == null) {
+        priceNeeded = true;
+      } else if (e.ok) {
+        exposure = e.data;
+      } else {
+        priceNeeded = e.status === 409 || e.status === 400;
+      }
       setState({
-        // `priceNeeded` is a supported state, not an error: the core refuses to
-        // guess a carbon price, so without one there is nothing to project.
         status: 'ready',
-        priceNeeded: !e.ok && (e.status === 409 || e.status === 400),
+        priceNeeded,
         deMinimis: d.ok ? d.data : null,
-        exposure: e.ok ? e.data : null,
+        exposure,
       });
     })();
     return () => {
@@ -92,7 +120,7 @@ export function Dashboard({ serverPrice }) {
   const pct = Math.min(100, (netT / LINE_TONNES) * 100);
   const over = netT > LINE_TONNES;
   const near = !over && pct >= 80;
-  const price = state.exposure?.price?.eur ?? serverPrice?.price?.eur ?? null;
+  const price = state.exposure?.price?.eur_per_tco2e ?? serverPrice?.price?.eur_per_tco2e ?? null;
 
   const lineNote = over ? t('lineNoteOver') : near ? t('lineNoteNear') : t('lineNoteBelow');
 
@@ -128,7 +156,7 @@ export function Dashboard({ serverPrice }) {
           unit="/tCO₂e"
           icon={Gauge}
           tipKey="tipEts"
-          hint={serverPrice?.stale ? t('unverified') : null}
+          hint={serverPrice?.price?.stale ? t('unverified') : null}
         />
         <Stat
           label={<GlossaryTerm termKey="tipExposure" labelKey="factorLbl" />}

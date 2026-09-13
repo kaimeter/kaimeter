@@ -22,15 +22,30 @@ const REQUIRED_FIELDS = [
   'installation_id', 'import_date', 'determination_basis', 'emissions_tco2e',
 ];
 
+/** The declaration year the export is scoped to. */
+const YEAR = new Date().getFullYear();
+
 export function Exports() {
   const t = useT();
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(
+    /** @type {{ ok: boolean, offline?: boolean, data?: any } | null} */ (null),
+  );
   const [pending, setPending] = useState(false);
 
   const run = async () => {
     setPending(true);
-    const res = api.served ? await api.exportDeclaration({ fields: [] }) : { ok: false, offline: true };
-    setResult(res);
+    // Masks are opt-in: with none, the declaration carries the eight mandatory
+    // fields and nothing else (R9/R21).
+    const res = api.served
+      ? await api.exportDeclaration({ year: YEAR, eori: null, mask: [] })
+      : null;
+    if (res == null) {
+      setResult({ ok: false, offline: true });
+    } else if (res.ok) {
+      setResult({ ok: true, offline: false, data: res.data });
+    } else {
+      setResult({ ok: false, offline: res.offline === true, data: res.data });
+    }
     setPending(false);
   };
 

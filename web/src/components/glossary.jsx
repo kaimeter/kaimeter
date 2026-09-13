@@ -27,7 +27,7 @@ import { useLocale, useT } from '@/lib/use-i18n';
  * The label is the locked termbase rendering where one exists, falling back to
  * the locale string, so a term is never silently paraphrased.
  */
-export function GlossaryTerm({ termKey, labelKey, children }) {
+export function GlossaryTerm({ termKey, labelKey, children = null }) {
   const t = useT();
   const locale = useLocale();
   const label = children ?? (labelKey ? t(labelKey) : term(locale, termKey));
@@ -47,7 +47,7 @@ export function GlossaryTerm({ termKey, labelKey, children }) {
 }
 
 /** A labelled figure with its explanation on hover — the `ⓘ` used on the cards. */
-export function Hint({ labelKey, className }) {
+export function Hint({ labelKey, className = undefined }) {
   const t = useT();
   return (
     <Tooltip>

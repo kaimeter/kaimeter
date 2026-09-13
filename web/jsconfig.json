@@ -1,0 +1,27 @@
+{
+  "//": "SPDX-License-Identifier: Apache-2.0 -- Copyright 2026 Keldrion, LLC and contributors. Type checking for the hand-written frontend: `npm run typecheck`.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "strictNullChecks": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/components/ui/*": ["./types/ui-shim.d.ts"],
+      "@/*": ["./src/*"],
+      "@generated/*": ["./.generated/*"]
+    }
+  },
+  "include": ["src/**/*.js", "src/**/*.jsx"],
+  "exclude": [
+    "node_modules",
+    ".vite-out",
+    "src/components/ui"
+  ]
+}

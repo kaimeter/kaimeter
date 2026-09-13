@@ -2,7 +2,7 @@
   "name": "kaimeter-web",
   "version": "0.2.0",
   "private": true,
-  "description": "The Kaimeter frontend. Builds to a single self-contained web/wizard.html that the Rust binary embeds; Node is never a build dependency of the shipped binary.",
+  "description": "The Kaimeter frontend. Builds to a single self-contained web/wizard.html that the Rust binary embeds; Node is a build-time dependency only and never reaches the runtime image.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
     "shot": "node scripts/screenshot.mjs",
     "browsers": "playwright install chromium",
     "gen": "node scripts/gen-locales.mjs",
+    "typecheck": "tsc -p jsconfig.json",
     "prebuild": "node scripts/gen-locales.mjs",
     "predev": "node scripts/gen-locales.mjs"
   },
@@ -41,9 +42,12 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "playwright": "^1.63.0",
     "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3"
   }

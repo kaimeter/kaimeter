@@ -283,6 +283,8 @@ pub fn verify_inclusion(leaf: &str, proof: &MerkleProof) -> bool {
 /// For CN-side exports the pack reduces to a single emission factor per CN
 /// code — no bill-of-materials or margin exposure at any point.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct PackContent {
     /// Anonymized installation identifier.
     pub installation_ref: String,
@@ -303,6 +305,8 @@ pub struct PackContent {
 
 /// A sealed pack: content plus its Ed25519 signature block.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct SealedPack {
     /// The compliance payload.
     pub content: PackContent,

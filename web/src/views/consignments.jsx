@@ -7,6 +7,7 @@ import { PackagePlus, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -17,33 +18,51 @@ import { api } from '@/lib/api';
 import { GlossaryTerm, Hint } from '@/components/glossary';
 import { useT } from '@/lib/use-i18n';
 
-/** Sample CN codes. The full catalogue is reference data (see /api/reference). */
-const SAMPLE_CN = ['72083800', '73181500', '76041010', '25232100', '31021000'];
+/**
+ * Sample CN codes, restricted to the codes the core's seeded reference catalog
+ * actually carries (see `migrations/0002_seed_tables.sql`): a default the core
+ * cannot validate is a rejection waiting to happen. The full catalogue is
+ * reference data (see /api/reference).
+ */
+const SAMPLE_CN = ['73181500', '76041010', '31021000'];
 const ORIGINS = ['CN', 'IN', 'TR', 'UA', 'ZA'];
 
 export function Consignments() {
   const t = useT();
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState(
+    /** @type {Array<{ cn_code: string, net_mass_kg: number, country_of_origin: string, determination_basis: string, saved: boolean }>} */ (
+      []
+    ),
+  );
   const [cn, setCn] = useState(SAMPLE_CN[0]);
   const [origin, setOrigin] = useState(ORIGINS[0]);
   const [basis, setBasis] = useState('DEFAULT');
+  const [mass, setMass] = useState('1000');
+  const [importDate, setImportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [pending, setPending] = useState(false);
 
   const add = async () => {
     setPending(true);
+    // One structured record, validated by the core. The installation is not
+    // collected yet, so this is the same `UNMAPPED` reference the SAD import
+    // uses — never an invented installation id.
     const draft = {
+      status: null,
+      eori: null,
       cn_code: cn,
-      net_mass_kg: 1000,
+      net_mass_kg: Number(mass),
       country_of_origin: origin,
       production_country: origin,
-      determination_basis: basis,
+      installation_id: 'UNMAPPED',
+      import_date: importDate,
+      determination_basis: /** @type {'ACTUAL' | 'DEFAULT'} */ (basis),
+      carbon_price_eur_per_tco2e: null,
+      carbon_price_country: null,
     };
     // Served: the row goes through the core's own validation, so the UI shows
     // exactly what the engine would accept or reject. file://: local only.
-    const res = api.served
-      ? await api.consignments.importSad({ rows: [draft] })
-      : { ok: false, offline: true };
-    setRows((prev) => [{ ...draft, saved: res.ok }, ...prev]);
+    const res = api.served ? await api.consignments.create(draft) : null;
+    setRows((prev) => [{ ...draft, saved: res != null && res.ok }, ...prev]);
     setPending(false);
   };
 
@@ -100,13 +119,33 @@ export function Consignments() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="mass">{t('netMass')}</Label>
+              <Input
+                id="mass"
+                type="number"
+                min="0"
+                step="1"
+                value={mass}
+                onChange={(e) => setMass(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="import-date">{t('importDate')}</Label>
+              <Input
+                id="import-date"
+                type="date"
+                value={importDate}
+                onChange={(e) => setImportDate(e.target.value)}
+              />
+            </div>
           </div>
           <p className="text-muted-foreground text-xs">
             {basis === 'ACTUAL' ? t('basisActualHint') : t('basisDefaultHint')}
           </p>
           <Button onClick={add} disabled={pending}>
             <Upload />
-            {t('importSad')}
+            {t('save')}
           </Button>
         </CardContent>
       </Card>

@@ -597,7 +597,7 @@ async fn api_end_to_end_pass() {
     .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(exposure["factor"], 0.025);
-    assert_eq!(exposure["price"]["eur"], 80.5);
+    assert_eq!(exposure["price"]["eur_per_tco2e"], 80.5);
     assert_eq!(exposure["consignments"][0]["emissions_tco2e"], 132.0);
     assert_eq!(exposure["consignments"][0]["gross_eur"], 132.0 * 80.5);
     assert_eq!(exposure["consignments"][0]["net_eur"], 132.0 * 0.025 * 80.5);
@@ -877,8 +877,11 @@ async fn api_exposure_price_fallback_chain() {
     // ...unlocks the projection with the cached price and its flags.
     let (status, exposure) = call(app.clone(), "GET", "/api/exposure?year=2026", None).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(exposure["price"]["eur"], 75.36);
+    assert_eq!(exposure["price"]["eur_per_tco2e"], 75.36);
     assert_eq!(exposure["price"]["manual"], true);
+    // The cached price is now shared by both endpoints, so it carries its
+    // cache metadata here too.
+    assert_eq!(exposure["price"]["as_of"], "2026-04-07");
 
     // A negative manual price is refused (R7: never poison the projection).
     let (status, body) = call(

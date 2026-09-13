@@ -228,6 +228,17 @@ npm --prefix web run build          # writes web/wizard.html
 KAIMETER_SKIP_FRONTEND=1 cargo build --release
 ```
 
+The frontend is type-checked against the wire contract the Rust API generates,
+so a client call that drifts from a handler fails the check instead of the user:
+
+```bash
+cargo test --features ts --lib      # derives web/.generated/*.ts from the API types
+npm --prefix web run typecheck
+```
+
+`ts` is off by default: the typegen dependency is a build-time tool and never
+enters the shipped binary.
+
 ## Contributing
 
 We encourage you to contribute to Kaimeter. See

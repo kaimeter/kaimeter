@@ -20,7 +20,9 @@ import { useT } from '@/lib/use-i18n';
  */
 export function Review() {
   const t = useT();
-  const [decision, setDecision] = useState(null);
+  const [decision, setDecision] = useState(
+    /** @type {'accept' | 'finding' | null} */ (null),
+  );
 
   return (
     <div className="space-y-6">

@@ -117,6 +117,8 @@ impl CnCode {
 
 /// Basis on which embedded emissions are determined for a consignment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DeterminationBasis {
     /// Actual installation-specific emissions.
@@ -161,6 +163,8 @@ pub struct Installation {
 
 /// One imported consignment (the CBAM unit of account).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
 pub struct Consignment {
     /// 8-digit combined nomenclature code of the goods.
     pub cn_code: String,

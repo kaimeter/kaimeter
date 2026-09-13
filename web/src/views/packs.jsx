@@ -21,20 +21,33 @@ import { useT } from '@/lib/use-i18n';
  */
 export function Packs() {
   const t = useT();
-  const [cn, setCn] = useState('72083800');
+  const [cn, setCn] = useState('73181500');
+  const [installation, setInstallation] = useState('');
   const [factor, setFactor] = useState('2.1');
-  const [pack, setPack] = useState(null);
+  const [emissions, setEmissions] = useState('');
+  const [pack, setPack] = useState(
+    /** @type {import('@generated/PackSealResponse').PackSealResponse | { offline: true } | null} */ (
+      null
+    ),
+  );
   const [pending, setPending] = useState(false);
 
   const seal = async () => {
     setPending(true);
+    // The core validates every field and refuses rather than guessing, so the
+    // whole payload is collected here: an unsealable pack never ships
+    // (R16/R21).
     const res = api.served
       ? await api.sealPack({
+          installation_ref: installation,
           cn_code: cn,
           emission_factor_tco2e_per_t: Number(factor),
+          embedded_emissions_tco2e: Number(emissions),
+          evidence_leaves: [],
+          valid_until_iso: null,
         })
-      : { ok: false, offline: true };
-    setPack(res.ok ? res.data : { offline: true });
+      : null;
+    setPack(res && res.ok ? res.data : { offline: true });
     setPending(false);
   };
 
@@ -56,13 +69,31 @@ export function Packs() {
               <p className="text-muted-foreground text-xs">{t(`cn.${cn}`)}</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="pack-factor">{t('packWorthTitle')}</Label>
+              <Label htmlFor="pack-installation">{t('installation')}</Label>
+              <Input
+                id="pack-installation"
+                value={installation}
+                onChange={(e) => setInstallation(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pack-factor">{t('emissionsPerT')}</Label>
               <Input
                 id="pack-factor"
                 type="number"
                 step="0.01"
                 value={factor}
                 onChange={(e) => setFactor(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pack-emissions">{t('emissionsTotal')}</Label>
+              <Input
+                id="pack-emissions"
+                type="number"
+                step="0.01"
+                value={emissions}
+                onChange={(e) => setEmissions(e.target.value)}
               />
             </div>
           </div>
@@ -77,9 +108,9 @@ export function Packs() {
       {pack ? (
         <Alert>
           <ShieldCheck />
-          <AlertTitle>{pack.offline ? t('offline') : t('packSealedNote')}</AlertTitle>
+          <AlertTitle>{'offline' in pack ? t('offline') : t('packSealedNote')}</AlertTitle>
           <AlertDescription>
-            {pack.offline ? (
+            {'offline' in pack ? (
               <RichText text={t('etsPlainP4')} />
             ) : (
               <div className="mt-3 space-y-3 text-xs">
@@ -89,12 +120,16 @@ export function Packs() {
                 </div>
                 <Separator />
                 <div className="space-y-1">
-                  <div className="text-muted-foreground">{t('fPackId')}</div>
-                  <code className="block break-all">{pack.pack_id ?? pack.id ?? '—'}</code>
+                  <div className="text-muted-foreground">{t('cnCode')}</div>
+                  <code className="block break-all">{pack.pack.content.cn_code}</code>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-muted-foreground">{t('dateHdr')}</div>
+                  <code className="block break-all">{pack.pack.content.issued_iso}</code>
                 </div>
                 <div className="space-y-1">
                   <div className="text-muted-foreground">{t('verifierCheck')}</div>
-                  <code className="block break-all">{pack.public_key_hex ?? '—'}</code>
+                  <code className="block break-all">{pack.pack.public_key_hex}</code>
                 </div>
               </div>
             )}
