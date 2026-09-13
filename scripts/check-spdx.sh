@@ -30,8 +30,6 @@ is_allowed() {
         *.png) return 0 ;;                            # binary
         .gitignore | .prettierignore | .prettierrc.json)
             return 0 ;;                               # tool configuration
-        web/index.html)
-            return 0 ;;                               # Vite entry: Vite rewrites the doctype, so a header here would not survive; the artifact carries one from web/index.html
         *) return 1 ;;
     esac
 }

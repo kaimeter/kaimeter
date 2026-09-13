@@ -11,7 +11,7 @@ description = "Kaimeter: open-core CBAM compliance toolkit (core server)"
 repository = "https://github.com/kaimeter/kaimeter"
 readme = "README.md"
 publish = false
-# `cargo run` boots the server; regen-wizard is a dev tool (bin-default).
+# One binary: the server. The frontend is built by build.rs, not by a bin.
 default-run = "kaimeter"
 
 # The product is named kaimeter (README, systemd unit, container entrypoint);

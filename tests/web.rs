@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Keldrion, LLC and contributors
 
-//! Artifact-contract tests for the 0.1.0 demo wizard (`web/wizard.html`).
+//! Artifact-contract tests for the built wizard.
 //!
-//! The wizard is a zero-dependency single file: no build step,
-//! no frameworks, runnable from `file://`. These tests pin the artifact's
-//! source-level contract — offline by construction (R22), first-run role
-//! selection (R47), and the regulatory numbers it renders (R4/R7/R1, R23).
-//! The routes that serve it are covered in `src/http/mod.rs`; browser-level
-//! execution tests arrive with the E2E rig.
+//! The wizard is a zero-dependency single file — built from `web/` by
+//! `build.rs` and embedded in the crate, so it also runs from `file://`. These
+//! tests pin the artifact's source-level contract — offline by construction
+//! (R22), first-run role selection (R47), and the regulatory numbers it renders
+//! (R4/R7/R1, R23). The routes that serve it are covered in `src/http/mod.rs`;
+//! browser-level execution tests arrive with the E2E rig.
 //!
 //! The second half of this file is the end-to-end JSON API integration pass
 //! (`/api/...`, the wizard ↔ core contract): every endpoint
@@ -24,7 +24,10 @@ use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use tower::ServiceExt;
 
-const WIZARD: &str = include_str!("../web/wizard.html");
+/// The embedded artifact. `WIZARD_TEMPLATE` is built from `web/` by `build.rs`,
+/// so these tests always run against the UI the binary ships — there is no
+/// checked-in copy that could drift from the sources.
+const WIZARD: &str = kaimeter_core::wizard::WIZARD_TEMPLATE;
 
 // ---------------------------------------------------------------------------
 // 1. Artifact contract (R22): one self-contained file, offline by construction.
@@ -261,11 +264,6 @@ fn artifact_shows_the_first_run_language_choice() {
     // R47: language, then the plain-words primer, then the role.
     assert!(WIZARD.contains("zh-CN"), "the Chinese locale must ship");
     assert!(WIZARD.contains("English"));
-}
-
-#[test]
-fn embedded_wizard_matches_the_file_on_disk() {
-    assert_eq!(WIZARD, kaimeter_core::wizard::WIZARD_TEMPLATE);
 }
 
 // 7. The JSON API integration pass (/api/...) — the wizard ↔ core contract:

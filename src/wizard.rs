@@ -3,12 +3,16 @@
 
 //! The wizard web asset and its locale injection.
 //!
-//! `web/wizard.html` is a single zero-dependency file that must also run
-//! standalone from `file://`, so its translation dictionaries physically live
-//! inside it — but they are GENERATED from `locales/*.json` (the `ui.*` keys),
-//! never authored by hand. The bundled fallback is generated at build time by
+//! The artifact is a single zero-dependency file that must also run standalone
+//! from `file://`, so its translation dictionaries physically live inside it —
+//! but they are GENERATED from `locales/*.json` (the `ui.*` keys), never
+//! authored by hand. The bundled fallback is generated at build time by
 //! `web/scripts/gen-locales.mjs` from the same files, and the server overwrites
 //! the region at startup with whatever it actually loaded.
+//!
+//! The artifact is a BUILD OUTPUT of `web/` (React + Vite, see `build.rs`), not
+//! a checked-in file: it is written to `OUT_DIR` and embedded from there, so a
+//! binary can never carry a UI that drifted from its sources.
 //!
 //! When the binary serves the page, [`render`] re-injects the *loaded* locales
 //! into the same region — so a `locales/` directory on disk re-localizes the
@@ -20,9 +24,11 @@ use std::path::Path;
 
 /// The wizard asset embedded at compile time — one artifact, two delivery
 /// modes (served at `/`, or opened directly from `file://`).
-pub const WIZARD_TEMPLATE: &str = include_str!("../web/wizard.html");
+///
+/// Built by `build.rs` from `web/`; there is no committed copy.
+pub const WIZARD_TEMPLATE: &str = include_str!(concat!(env!("OUT_DIR"), "/wizard.html"));
 
-/// Region markers around the generated dictionary block (`const L = …`).
+/// Region markers around the generated dictionary block (`window.__KAIMETER__`).
 pub const LOCALES_START_MARKER: &str = "/*kaimeter-locales-start*/";
 const LOCALES_START: &str = LOCALES_START_MARKER;
 pub const LOCALES_END_MARKER: &str = "/*kaimeter-locales-end*/";

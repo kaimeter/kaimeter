@@ -23,7 +23,10 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..', '..');
 const localesDir = resolve(repoRoot, 'locales');
-const outFile = resolve(here, '..', 'src', 'generated', 'locales.js');
+// Deliberately OUTSIDE web/src: the generated file is a build output, and the
+// cargo build watches web/src. Writing it inside the source tree would make
+// every build invalidate its own watch set and rebuild forever.
+const outFile = resolve(here, '..', '.generated', 'locales.js');
 
 const LOCALES = ['en', 'zh-CN'];
 const PREFIX = 'ui.';

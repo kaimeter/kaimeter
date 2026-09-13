@@ -167,10 +167,11 @@ supported languages are embedded in the executable at compile time, so the
 single-file binary works out of the box; a `locales` directory next to it
 (or `KAIMETER_LOCALES_DIR`) overrides the embedded strings without a rebuild
 — including the wizard's UI dictionaries, which the server re-injects into
-the page it serves. The wizard file (`web/wizard.html`) also runs standalone
-from `file://`; its inline dictionary block is generated from the locale
-files (`cargo run --bin regen-wizard`), never edited by hand, and a test
-fails the build if it drifts.
+the page it serves. The wizard is built from `web/` by `build.rs` and embedded
+in the binary; the same artifact also runs standalone from `file://`. Its
+dictionary block is generated from the locale files at build time, never edited
+by hand — and because the artifact is a build output rather than a committed
+file, it cannot drift from the sources.
 
 | Language            | Code    | Status      | File                                       |
 | ------------------- | ------- | ----------- | ------------------------------------------ |
@@ -211,6 +212,20 @@ Building from source:
 git clone https://github.com/kaimeter/kaimeter.git
 cd kaimeter
 cargo build --release
+```
+
+The frontend (React + Vite, in `web/`) is built as part of that command, so
+**Node.js 22+ and npm** must be on `PATH`. `npm ci` runs only when
+`web/package-lock.json` changes, and edits under `src/` do not rebuild the UI —
+so a Rust-only change costs nothing extra.
+
+To build the UI separately and reuse it instead — this is how the container
+image keeps Node out of its Rust stage — run the frontend build yourself and
+point cargo at the result:
+
+```bash
+npm --prefix web run build          # writes web/wizard.html
+KAIMETER_SKIP_FRONTEND=1 cargo build --release
 ```
 
 ## Contributing

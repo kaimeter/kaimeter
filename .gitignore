@@ -15,8 +15,17 @@ kaimeter.toml
 /.tmp/
 
 # Sandbox toolchain: workspace-local Rust toolchain and the Playwright browser
-# cache. Dev-only; see DEVELOPMENT.md.
+# cache. Dev-only.
 .toolchain/
 
 # Node dev dependencies (playwright, for scripts/screenshot.mjs).
 node_modules/
+
+# Frontend build outputs. `cargo build` regenerates all of these (see build.rs):
+# the single-file wizard artifact is written to OUT_DIR and embedded with
+# include_str!, and the fallback dictionaries are generated from locales/*.json.
+# They live outside web/src on purpose — a build output inside a watched source
+# directory would invalidate its own watch set and rebuild forever.
+/web/wizard.html
+/web/.generated/
+/web/.vite-out/

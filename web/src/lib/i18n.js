@@ -17,7 +17,7 @@
  * stripped, matching `I18n::ui_dictionaries()`.
  */
 
-import { FALLBACK_DICTIONARIES, FALLBACK_TERMS } from '@/generated/locales';
+import { FALLBACK_DICTIONARIES, FALLBACK_TERMS } from '@generated/locales';
 
 /** Injected dictionaries win; the bundled ones fill the gaps. */
 function dictionaries() {
