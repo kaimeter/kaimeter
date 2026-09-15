@@ -1,0 +1,70 @@
+name: Mutation testing
+
+# Mutation testing is too slow for every push: pull requests mutate only
+# the lines they change, and the weekly schedule mutates the whole
+# workspace. Both stay idle until crates/ exists.
+on:
+  pull_request:
+    paths: ["crates/**"]
+  schedule:
+    - cron: "43 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutants-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  crates:
+    name: crates present
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.detect.outputs.present }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: detect
+        shell: bash
+        run: |
+          if compgen -G 'crates/*/Cargo.toml' > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  mutants:
+    name: cargo-mutants
+    needs: crates
+    if: needs.crates.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - name: Diff against the base branch
+        if: github.event_name == 'pull_request'
+        run: git diff --no-color "origin/${{ github.base_ref }}..." -- 'crates/**' > mutants.diff
+      - name: Mutate changed lines only
+        if: github.event_name == 'pull_request'
+        run: cargo mutants --no-shuffle --in-diff mutants.diff
+      - name: Mutate the whole workspace
+        if: github.event_name != 'pull_request'
+        run: cargo mutants --workspace --no-shuffle
+      - name: Upload the mutant report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutants.out
+          path: mutants.out
+          if-no-files-found: ignore
