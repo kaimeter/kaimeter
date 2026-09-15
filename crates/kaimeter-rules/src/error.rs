@@ -38,6 +38,8 @@ pub enum RuleError {
     OutOfScope,
     /// A required parameter is missing from a table.
     MissingParameter,
+    /// The rule is not implemented in this bundle.
+    NotYetImplemented,
 }
 
 impl fmt::Display for RuleError {
@@ -63,6 +65,9 @@ impl fmt::Display for RuleError {
             Self::NoPrecursors => formatter.write_str("no precursor supplies"),
             Self::OutOfScope => formatter.write_str("CN code is outside the bundle's scope"),
             Self::MissingParameter => formatter.write_str("required parameter is missing"),
+            Self::NotYetImplemented => {
+                formatter.write_str("rule is not implemented in this bundle")
+            }
         }
     }
 }
@@ -108,6 +113,10 @@ mod tests {
         assert_eq!(
             RuleError::MissingParameter.to_string(),
             "required parameter is missing"
+        );
+        assert_eq!(
+            RuleError::NotYetImplemented.to_string(),
+            "rule is not implemented in this bundle"
         );
     }
 }

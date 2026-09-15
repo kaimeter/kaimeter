@@ -50,6 +50,18 @@ pub fn see_primary_slope(
     })
 }
 
+/// Returns the specific embedded emissions of secondary aluminium.
+///
+/// The secondary route arrives with v0.2 (whitepaper §10); bundle 2026.2.0
+/// implements the primary route only.
+///
+/// # Errors
+///
+/// Always [`RuleError::NotYetImplemented`] in bundle 2026.2.0.
+pub fn see_secondary() -> Result<Fixed, RuleError> {
+    Err(RuleError::NotYetImplemented)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,5 +133,10 @@ mod tests {
             see_primary_slope(&input(), Fixed::from_scaled(i128::MAX), &gwp()),
             Err(RuleError::Overflow)
         );
+    }
+
+    #[test]
+    fn secondary_route_is_not_implemented() {
+        assert_eq!(see_secondary(), Err(RuleError::NotYetImplemented));
     }
 }
