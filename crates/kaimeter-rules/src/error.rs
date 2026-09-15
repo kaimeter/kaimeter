@@ -12,16 +12,26 @@ pub enum RuleError {
     DivisionByZero,
     /// A decimal string was not a plain decimal number.
     InvalidDecimal,
+    /// A date was not a real calendar date or not `YYYY-MM-DD`.
+    InvalidDate,
+    /// A year is outside the bundle's reporting periods.
+    UnsupportedPeriod {
+        /// The rejected calendar year.
+        year: u16,
+    },
 }
 
 impl fmt::Display for RuleError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let message = match self {
-            Self::Overflow => "fixed-point overflow",
-            Self::DivisionByZero => "division by zero",
-            Self::InvalidDecimal => "invalid decimal string",
-        };
-        formatter.write_str(message)
+        match self {
+            Self::Overflow => formatter.write_str("fixed-point overflow"),
+            Self::DivisionByZero => formatter.write_str("division by zero"),
+            Self::InvalidDecimal => formatter.write_str("invalid decimal string"),
+            Self::InvalidDate => formatter.write_str("invalid calendar date"),
+            Self::UnsupportedPeriod { year } => {
+                write!(formatter, "reporting period {year} is outside the bundle")
+            }
+        }
     }
 }
 
@@ -38,6 +48,11 @@ mod tests {
         assert_eq!(
             RuleError::InvalidDecimal.to_string(),
             "invalid decimal string"
+        );
+        assert_eq!(RuleError::InvalidDate.to_string(), "invalid calendar date");
+        assert_eq!(
+            RuleError::UnsupportedPeriod { year: 2025 }.to_string(),
+            "reporting period 2025 is outside the bundle"
         );
     }
 }

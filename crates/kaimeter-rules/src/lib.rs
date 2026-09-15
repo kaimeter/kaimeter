@@ -19,5 +19,6 @@
 extern crate alloc;
 
 pub mod bundle;
+pub mod common;
 pub mod error;
 pub mod fixed;
