@@ -9,11 +9,15 @@ on:
       - "paper/**"
       - ".github/workflows/paper.yml"
       - ".markdownlint-cli2.jsonc"
+      - "CITATION.cff"
+      - ".zenodo.json"
   pull_request:
     paths:
       - "paper/**"
       - ".github/workflows/paper.yml"
       - ".markdownlint-cli2.jsonc"
+      - "CITATION.cff"
+      - ".zenodo.json"
   workflow_dispatch:
 
 permissions:

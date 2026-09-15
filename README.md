@@ -1,6 +1,6 @@
 # Kaimeter
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22740284.svg)](https://doi.org/10.5281/zenodo.22740284)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22740283.svg)](https://doi.org/10.5281/zenodo.22740283)
 [![Paper](https://github.com/kaimeter/kaimeter/actions/workflows/paper.yml/badge.svg)](https://github.com/kaimeter/kaimeter/actions/workflows/paper.yml)
 
 Open, verifiable CBAM compliance: the CBAM methodology encoded as executable,
@@ -18,7 +18,7 @@ Paper 2026-01).
 
 | Release | Target | Content | Status |
 | --- | --- | --- | --- |
-| `paper-v1.1` | September 2026 | Working paper preprint, DOI [10.5281/zenodo.22740284](https://doi.org/10.5281/zenodo.22740284) | In preparation |
+| `paper-v1.1` | September 2026 | Working paper preprint, DOI [10.5281/zenodo.22740284](https://doi.org/10.5281/zenodo.22740284) | Published 2026-09-15 |
 | `v0.1` | October 2026 | `kaimeter-rules`: period, sector-dependent mark-ups, default-value selection, Art. 14 precursor averaging, scope table for current Annex I aluminium codes; primary aluminium with slope-method PFCs; the Appendix B vector passing at full precision; `bundle-hash`; no prover | Planned |
 | `v0.2` | November 2026 | First fixed-interpreter zkVM guest evaluating the aluminium bundle as witness with in-circuit bundle hash; native/guest differential tests; overvoltage method; secondary aluminium; two-supplier precursor vector | Planned |
 | `v0.3` | Q1 2027 | Steel sector; proof envelope and offline verifier; stable interpreter image IDs; attestation-policy schema and key resolution; signed bundle distribution; reproducible-build pipeline with SBOM and provenance | Planned |

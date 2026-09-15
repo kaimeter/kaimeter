@@ -6,9 +6,11 @@ Snapshot of what exists and what comes next. Updated with each release.
 
 The v1.1 preprint — *Prove, Don't Disclose: Verifiable CBAM Compliance Across
 Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs*,
-Kaimeter Working Paper 2026-01 — is finalized in `paper/` and awaiting
-publication on Zenodo (DOI
-[10.5281/zenodo.22740284](https://doi.org/10.5281/zenodo.22740284)).
+Kaimeter Working Paper 2026-01 — is published on Zenodo:
+
+- Version DOI: [10.5281/zenodo.22740284](https://doi.org/10.5281/zenodo.22740284)
+- Concept DOI (all versions): [10.5281/zenodo.22740283](https://doi.org/10.5281/zenodo.22740283)
+- Publication date: 2026-09-15
 
 The paper workflow builds the PDF from the sources with the pinned
 `pandoc/latex:3.11` image and asserts link health, the Appendix B arithmetic
@@ -29,7 +31,7 @@ carries `xtask/`.
 
 | Area | State |
 | --- | --- |
-| Working paper sources | Complete for v1.1 in `paper/` |
+| Working paper sources | Published as v1.1; sources in `paper/` |
 | Paper PDF build | Reproducible, pinned `pandoc/latex:3.11` image |
 | Comment policy | `cargo xtask check-comments`, wired into the pre-commit hook |
 | Rust quality gates | Path-filtered to `crates/**` until v0.1 lands |
