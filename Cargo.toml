@@ -1,7 +1,5 @@
 [workspace]
-# `crates/*` returns with the first crate (v0.1); a glob with no matches
-# breaks every cargo command.
-members = ["xtask"]
+members = ["crates/*", "xtask"]
 resolver = "3"
 
 [workspace.package]
