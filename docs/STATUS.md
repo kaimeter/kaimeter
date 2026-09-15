@@ -19,7 +19,7 @@ and version/DOI consistency.
 ## Reference implementation
 
 `kaimeter-rules` 0.1.0 implements the aluminium bundle (`2026.2.0`, canonical
-identity `sha256:f1e5aceb99e7159891f87032685118246dca7c3a084e40d8f788b55613e93df7`):
+identity `sha256:cd4f4446cf09ac8c0b5bb5a5cf91dd774eeb885c034674c09507696f60604c27`):
 reporting-period and sector-dependent mark-up rules, default-value selection
 with the other-countries and Annex IV fallbacks, Art. 14 precursor averaging,
 the Annex I aluminium scope table, the primary route with slope-method PFCs,

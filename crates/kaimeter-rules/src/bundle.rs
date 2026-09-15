@@ -219,20 +219,14 @@ fn normalize_newlines(content: &[u8], path: &str) -> Result<Vec<u8>, BundleError
         return Err(BundleError::NonUtf8Content(String::from(path)));
     }
     let mut normalized = Vec::with_capacity(content.len());
-    let mut index = 0;
-    while index < content.len() {
-        if content[index] != b'\r' {
-            normalized.push(content[index]);
-            index += 1;
-            continue;
+    let mut previous = None;
+    for &byte in content {
+        if byte == b'\r' {
+            normalized.push(b'\n');
+        } else if byte != b'\n' || previous != Some(b'\r') {
+            normalized.push(byte);
         }
-        normalized.push(b'\n');
-        let step = if content.get(index + 1) == Some(&b'\n') {
-            2
-        } else {
-            1
-        };
-        index += step;
+        previous = Some(byte);
     }
     Ok(normalized)
 }
@@ -495,6 +489,19 @@ mod tests {
             content: b"a\nb\nc\n",
         }];
         assert_eq!(bundle_hash(&crlf).unwrap(), bundle_hash(&lf).unwrap());
+
+        let mixed = [BundleFile {
+            path: "a.txt",
+            content: b"\n\r\r\nx\r",
+        }];
+        let mixed_lf = [BundleFile {
+            path: "a.txt",
+            content: b"\n\n\nx\n",
+        }];
+        assert_eq!(
+            bundle_hash(&mixed).unwrap(),
+            bundle_hash(&mixed_lf).unwrap()
+        );
     }
 
     #[test]

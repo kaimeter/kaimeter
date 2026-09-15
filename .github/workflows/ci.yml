@@ -83,9 +83,6 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -99,12 +96,11 @@ jobs:
         run: cargo llvm-cov --workspace --fail-under-lines 90
       - name: Emit an lcov report for Codecov
         run: cargo llvm-cov report --lcov --output-path lcov.info
-      # OIDC needs no repository secret, unlike a Codecov upload token.
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           fail_ci_if_error: true
-          use_oidc: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   deny:
     name: cargo-deny
