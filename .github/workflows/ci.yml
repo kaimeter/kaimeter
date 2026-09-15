@@ -1,14 +1,37 @@
 name: Rust quality gates
 
-# The filter keeps paper and tooling changes unblocked until the first
-# crate lands in crates/ (v0.1); widen it together with the Cargo.toml
-# members list at that point. Manual dispatch allows early testing.
+# Gate the whole workspace: crates, xtask and the root build configuration.
+# Paper-only changes stay unblocked. Manual dispatch allows early testing.
 on:
   push:
     branches: [main]
-    paths: ["crates/**"]
+    paths:
+      - "crates/**"
+      - "xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "clippy.toml"
+      - "deny.toml"
+      - "codecov.yml"
+      - ".config/nextest.toml"
+      - ".gitattributes"
+      - ".github/workflows/ci.yml"
   pull_request:
-    paths: ["crates/**"]
+    paths:
+      - "crates/**"
+      - "xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+      - "clippy.toml"
+      - "deny.toml"
+      - "codecov.yml"
+      - ".config/nextest.toml"
+      - ".gitattributes"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 permissions:
