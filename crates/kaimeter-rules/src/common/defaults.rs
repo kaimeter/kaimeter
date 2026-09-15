@@ -16,6 +16,7 @@ use alloc::string::String;
 
 use crate::common::Sector;
 use crate::common::markups;
+use crate::common::normalize_cn_code;
 use crate::common::period::ReportingPeriod;
 use crate::error::RuleError;
 use crate::fixed::Fixed;
@@ -169,24 +170,6 @@ fn assemble(total: &str, source: DefaultSource, markup: Fixed) -> Result<Default
         applied,
         source,
     })
-}
-
-/// Normalizes a CN code to bare digits.
-fn normalize_cn_code(text: &str) -> Result<String, RuleError> {
-    let mut normalized = String::with_capacity(text.len());
-    for character in text.chars() {
-        if character.is_ascii_whitespace() {
-            continue;
-        }
-        if !character.is_ascii_digit() {
-            return Err(RuleError::InvalidCnCode);
-        }
-        normalized.push(character);
-    }
-    if !matches!(normalized.len(), 4 | 6 | 8) {
-        return Err(RuleError::InvalidCnCode);
-    }
-    Ok(normalized)
 }
 
 #[cfg(test)]

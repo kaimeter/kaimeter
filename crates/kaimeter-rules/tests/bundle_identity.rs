@@ -18,7 +18,7 @@ use kaimeter_rules::bundle::{BundleFile, BundleMetadata, bundle_hash, embedded_m
 /// cargo run -p kaimeter-rules --bin bundle-hash -- crates/kaimeter-rules
 /// ```
 const PINNED_BUNDLE_HASH: &str =
-    "sha256:5b6c03fb64036826399df5dca6a9e87bacd0255adba1e7dbca4df16cf20ce2e6";
+    "sha256:0eea26aaa0f9d8532899009777d3e95ec37227734705bdf5867d049249e67d63";
 
 fn crate_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))

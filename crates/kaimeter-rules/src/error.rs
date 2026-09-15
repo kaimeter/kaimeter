@@ -34,6 +34,8 @@ pub enum RuleError {
     NoDefaultValue,
     /// No precursor supplies were offered.
     NoPrecursors,
+    /// No scope entry covers the good on the given date.
+    OutOfScope,
 }
 
 impl fmt::Display for RuleError {
@@ -57,6 +59,7 @@ impl fmt::Display for RuleError {
             Self::InvalidCnCode => formatter.write_str("invalid CN code"),
             Self::NoDefaultValue => formatter.write_str("no default value for the good"),
             Self::NoPrecursors => formatter.write_str("no precursor supplies"),
+            Self::OutOfScope => formatter.write_str("CN code is outside the bundle's scope"),
         }
     }
 }
@@ -95,5 +98,9 @@ mod tests {
             "no default value for the good"
         );
         assert_eq!(RuleError::NoPrecursors.to_string(), "no precursor supplies");
+        assert_eq!(
+            RuleError::OutOfScope.to_string(),
+            "CN code is outside the bundle's scope"
+        );
     }
 }

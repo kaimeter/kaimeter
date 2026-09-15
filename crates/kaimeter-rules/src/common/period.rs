@@ -27,8 +27,8 @@ impl Date {
     ///
     /// Returns [`RuleError::InvalidDate`] when the components are not a real
     /// calendar date.
-    pub fn from_parts(year: u16, month: u8, day: u8) -> Result<Self, RuleError> {
-        if year == 0 || !(1..=12).contains(&month) || day == 0 || day > days_in_month(year, month) {
+    pub const fn from_parts(year: u16, month: u8, day: u8) -> Result<Self, RuleError> {
+        if year == 0 || month == 0 || month > 12 || day == 0 || day > days_in_month(year, month) {
             return Err(RuleError::InvalidDate);
         }
         Ok(Self { year, month, day })
@@ -113,7 +113,7 @@ fn parse_u8(bytes: &[u8]) -> Result<u8, RuleError> {
 }
 
 /// Returns the number of days in a month, zero for an invalid month.
-fn days_in_month(year: u16, month: u8) -> u8 {
+const fn days_in_month(year: u16, month: u8) -> u8 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
@@ -124,7 +124,7 @@ fn days_in_month(year: u16, month: u8) -> u8 {
 }
 
 /// Returns `true` for a leap year of the Gregorian calendar.
-fn is_leap_year(year: u16) -> bool {
+const fn is_leap_year(year: u16) -> bool {
     year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400))
 }
 
