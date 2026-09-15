@@ -28,6 +28,10 @@ pub enum RuleError {
         /// Column of the first parse error.
         column: usize,
     },
+    /// A CN code was not four, six or eight digits.
+    InvalidCnCode,
+    /// No default value covers the good.
+    NoDefaultValue,
 }
 
 impl fmt::Display for RuleError {
@@ -48,6 +52,8 @@ impl fmt::Display for RuleError {
                 formatter,
                 "invalid parameter table `{table}` at line {line}, column {column}"
             ),
+            Self::InvalidCnCode => formatter.write_str("invalid CN code"),
+            Self::NoDefaultValue => formatter.write_str("no default value for the good"),
         }
     }
 }
@@ -79,6 +85,11 @@ mod tests {
             }
             .to_string(),
             "invalid parameter table `gwp` at line 2, column 7"
+        );
+        assert_eq!(RuleError::InvalidCnCode.to_string(), "invalid CN code");
+        assert_eq!(
+            RuleError::NoDefaultValue.to_string(),
+            "no default value for the good"
         );
     }
 }
