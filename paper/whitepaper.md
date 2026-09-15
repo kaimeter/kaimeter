@@ -3,15 +3,15 @@
 
 **Yiu Ming Patrick Ma**
 Keldrion, LLC (Delaware, USA)
-ORCID:  [https://orcid.org/0009-0008-9061-6859] · `[fivetwentysix@keldrion.com]`
+ORCID:  [https://orcid.org/0009-0008-9061-6859] · `fivetwentysix@keldrion.com`
 
 **Version 1.1 — Preprint — September 2026**
 Kaimeter Working Paper 2026-01
-DOI: `[10.5281/zenodo.22740284]`
+DOI: `10.5281/zenodo.22740284`
 Reference implementation (in development): `https://github.com/kaimeter/kaimeter` — first release (v0.1) targeted October 2026
 License: CC BY 4.0 (text) · Apache License 2.0 (code)
 
-*Suggested citation:* Ma, Yiu Ming Patrick (2026). *Prove, Don't Disclose: Verifiable CBAM Compliance Across Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs.* Kaimeter Working Paper 2026-01, preprint. DOI `[10.5281/zenodo.22740284]`.
+*Suggested citation:* Ma, Yiu Ming Patrick (2026). *Prove, Don't Disclose: Verifiable CBAM Compliance Across Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs.* Kaimeter Working Paper 2026-01, preprint. DOI `10.5281/zenodo.22740284`.
 
 **Keywords:** carbon border adjustment mechanism, CBAM, rules as code, computational law, zero-knowledge proofs, embedded emissions, steel, aluminium, cement, fertilisers, downstream goods, supply-chain privacy, data sovereignty, open source
 

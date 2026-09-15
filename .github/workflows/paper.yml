@@ -1,0 +1,192 @@
+name: Paper
+
+# Builds and validates the working paper with the pinned Pandoc and TeX Live
+# image. The PDF is a release artifact: CI uploads it and never commits it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "paper/**"
+      - ".github/workflows/paper.yml"
+      - ".markdownlint-cli2.jsonc"
+  pull_request:
+    paths:
+      - "paper/**"
+      - ".github/workflows/paper.yml"
+      - ".markdownlint-cli2.jsonc"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paper-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PANDOC_IMAGE: pandoc/latex:3.11
+
+jobs:
+  build:
+    name: build PDF
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Derive the artifact name, timestamp and trailer ID
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          metadata=paper/metadata.yaml
+          series=$(sed -n 's/^series: *"\(.*\)"/\1/p' "$metadata")
+          version=$(sed -n 's/^version: *"\(.*\)"/\1/p' "$metadata")
+          date=$(sed -n 's/^date: *"\(.*\)"/\1/p' "$metadata")
+          slug=$(printf '%s' "$series" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+          echo "artifact=$slug-v$version" >> "$GITHUB_OUTPUT"
+          echo "epoch=$(date -u -d "$date-01" +%s)" >> "$GITHUB_OUTPUT"
+          digest=$(cat paper/whitepaper.md "$metadata" paper/templates/paper.tex paper/filters/paper.lua | sha256sum | cut -d' ' -f1)
+          echo "trailer=<${digest:0:32}> <${digest:32:32}>" >> "$GITHUB_OUTPUT"
+
+      - name: Render LaTeX in the pinned image
+        shell: bash
+        run: |
+          docker run --rm \
+            --volume "$PWD:/data" \
+            --workdir /data \
+            --env "SOURCE_DATE_EPOCH=${{ steps.meta.outputs.epoch }}" \
+            --env FORCE_SOURCE_DATE=1 \
+            "$PANDOC_IMAGE" \
+            paper/whitepaper.md \
+            --from markdown \
+            --metadata-file paper/metadata.yaml \
+            --template paper/templates/paper.tex \
+            --lua-filter paper/filters/paper.lua \
+            --variable "pdf-trailer-id=${{ steps.meta.outputs.trailer }}" \
+            --to latex \
+            --standalone \
+            --output "paper/dist/${{ steps.meta.outputs.artifact }}.tex"
+
+      - name: Compile the PDF
+        shell: bash
+        run: |
+          for pass in 1 2; do
+            docker run --rm \
+              --volume "$PWD:/data" \
+              --workdir /data \
+              --env "SOURCE_DATE_EPOCH=${{ steps.meta.outputs.epoch }}" \
+              --env FORCE_SOURCE_DATE=1 \
+              --entrypoint xelatex \
+              "$PANDOC_IMAGE" \
+              -halt-on-error \
+              -interaction=nonstopmode \
+              -file-line-error \
+              "-output-directory=paper/dist" \
+              "paper/dist/${{ steps.meta.outputs.artifact }}.tex"
+          done
+          test -s "paper/dist/${{ steps.meta.outputs.artifact }}.pdf"
+          sha256sum "paper/dist/${{ steps.meta.outputs.artifact }}.pdf"
+
+      - name: Upload the release candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.artifact }}
+          path: |
+            paper/dist/${{ steps.meta.outputs.artifact }}.pdf
+            paper/dist/${{ steps.meta.outputs.artifact }}.tex
+          if-no-files-found: error
+
+  lint:
+    name: markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: "paper/**/*.md"
+
+  links:
+    name: link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Extract the paper's URLs
+        shell: bash
+        run: |
+          mkdir -p paper/dist
+          python3 - <<'PY'
+          import pathlib
+          import re
+
+          text = pathlib.Path("paper/whitepaper.md").read_text(encoding="utf-8")
+          urls = sorted({m.group(0).rstrip(".,;:") for m in re.finditer(r'https?://[^\s<>"`\]\)}]+', text)})
+          pathlib.Path("paper/dist/links.txt").write_text("\n".join(urls) + "\n", encoding="utf-8")
+          print(f"{len(urls)} URLs")
+          PY
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --max-retries 2 --timeout 30 paper/dist/links.txt
+          token: ${{ github.token }}
+
+  checks:
+    name: source checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assert the Appendix B arithmetic
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from decimal import Decimal
+
+          vector = json.loads(open("paper/vectors/worked-example-aluminium.json", encoding="utf-8").read())
+          parameters = vector["parameters"]
+          inputs = vector["inputs"]
+          expected = vector["expected"]
+
+          e_cf4 = Decimal(inputs["anode_effect_minutes_per_cell_day"]) * Decimal(inputs["slope_emission_factor_cf4"]) / Decimal(1000) * Decimal(inputs["production_t"])
+          e_c2f6 = e_cf4 * Decimal(inputs["weight_fraction_c2f6_cf4"])
+          e_pfc = e_cf4 * Decimal(parameters["gwp_cf4"]) + e_c2f6 * Decimal(parameters["gwp_c2f6"])
+          see = (Decimal(inputs["direct_co2_t"]) + e_pfc) / Decimal(inputs["production_t"])
+
+          assert f"{e_cf4:.6f}" == expected["e_cf4_t"], (e_cf4, expected["e_cf4_t"])
+          assert f"{e_c2f6:.6f}" == expected["e_c2f6_t"], (e_c2f6, expected["e_c2f6_t"])
+          assert f"{e_pfc:.6f}" == expected["e_pfc_tco2e"], (e_pfc, expected["e_pfc_tco2e"])
+          assert f"{see:.6f}" == expected["see_tco2e_per_t"], (see, expected["see_tco2e_per_t"])
+          print(f"Appendix B arithmetic matches, SEE = {see:.6f}")
+          PY
+
+      - name: Assert version and DOI consistency
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import re
+
+          metadata = pathlib.Path("paper/metadata.yaml").read_text(encoding="utf-8")
+          version = re.search(r'^version:\s*"?([^"\n]+)"?', metadata, re.M).group(1).strip()
+          doi = re.search(r'^doi:\s*"?([^"\n]+)"?', metadata, re.M).group(1).strip()
+
+          paper = pathlib.Path("paper/whitepaper.md").read_text(encoding="utf-8")
+          versions = set(re.findall(r"Version\s+([0-9]+\.[0-9]+)", paper))
+          dois = set(re.findall(r"10\.\d{4,9}/zenodo\.\d+", paper))
+          assert versions == {version}, f"whitepaper.md versions {versions} != metadata {version}"
+          assert dois == {doi}, f"whitepaper.md DOIs {dois} != metadata {doi}"
+
+          citation = pathlib.Path("CITATION.cff")
+          if citation.exists():
+              text = citation.read_text(encoding="utf-8")
+              assert re.search(rf'^version:\s*"?{re.escape(version)}"?\s*$', text, re.M), "CITATION.cff version differs"
+              assert doi in text, "CITATION.cff DOI differs"
+
+          zenodo = pathlib.Path(".zenodo.json")
+          if zenodo.exists():
+              data = json.loads(zenodo.read_text(encoding="utf-8"))
+              assert data.get("version") == version, ".zenodo.json version differs"
+              assert doi in json.dumps(data), ".zenodo.json DOI differs"
+
+          print(f"version {version} and DOI {doi} agree")
+          PY

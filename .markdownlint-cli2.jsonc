@@ -1,0 +1,15 @@
+{
+  // The working paper is long-form prose; wide tables, compact table pipes,
+  // bare URLs and directory-tree fences are deliberate.
+  "config": {
+    "MD012": false,
+    "MD013": false,
+    "MD022": false,
+    "MD029": false,
+    "MD034": false,
+    "MD040": false,
+    "MD049": false,
+    "MD060": false
+  },
+  "globs": ["paper/**/*.md"]
+}

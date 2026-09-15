@@ -1,0 +1,5 @@
+# Tests must be deterministic: no retries, and one run reports every
+# failure instead of stopping at the first.
+[profile.default]
+fail-fast = false
+retries = 0

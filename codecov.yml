@@ -1,0 +1,17 @@
+# Codecov statuses mirror the CI gates: the project floor is also enforced
+# by `cargo llvm-cov --fail-under-lines 90`, and every patch must carry
+# tests of its own.
+coverage:
+  precision: 2
+  round: down
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 1%
+    patch:
+      default:
+        target: 90%
+
+comment:
+  layout: "condensed"

@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use Kaimeter or its working paper, please cite the working paper:"
+title: "Kaimeter"
+version: "1.1"
+type: software
+license: Apache-2.0
+repository-code: "https://github.com/kaimeter/kaimeter"
+authors:
+  - family-names: Ma
+    given-names: "Yiu Ming Patrick"
+    orcid: "https://orcid.org/0009-0008-9061-6859"
+    affiliation: "Keldrion, LLC"
+preferred-citation:
+  type: report
+  title: "Prove, Don't Disclose: Verifiable CBAM Compliance Across Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs"
+  authors:
+    - family-names: Ma
+      given-names: "Yiu Ming Patrick"
+      orcid: "https://orcid.org/0009-0008-9061-6859"
+      affiliation: "Keldrion, LLC"
+  year: 2026
+  month: 9
+  version: "1.1"
+  doi: "10.5281/zenodo.22740284"
+  url: "https://doi.org/10.5281/zenodo.22740284"
+  license: CC-BY-4.0
+  keywords:
+    - carbon border adjustment mechanism
+    - CBAM
+    - rules as code
+    - computational law
+    - zero-knowledge proofs
+    - embedded emissions
+    - steel
+    - aluminium
+    - cement
+    - fertilisers
+    - downstream goods
+    - supply-chain privacy
+    - data sovereignty
+    - open source
+  abstract: >-
+    The CBAM methodology encoded as executable, hash-identified rule bundles,
+    with zero-knowledge proofs that a declared embedded-emissions figure is the
+    correct output of the identified rules without disclosing activity data.

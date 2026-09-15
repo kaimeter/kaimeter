@@ -1,0 +1,41 @@
+{
+  "title": "Prove, Don't Disclose: Verifiable CBAM Compliance Across Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs",
+  "upload_type": "publication",
+  "publication_type": "workingpaper",
+  "description": "<p>The CBAM methodology encoded as executable, hash-identified rule bundles, with zero-knowledge proofs that a declared embedded-emissions figure is the correct output of the identified rules without disclosing activity data.</p><p>This release accompanies Kaimeter Working Paper 2026-01, DOI 10.5281/zenodo.22740284.</p>",
+  "creators": [
+    {
+      "name": "Ma, Yiu Ming Patrick",
+      "orcid": "0009-0008-9061-6859",
+      "affiliation": "Keldrion, LLC"
+    }
+  ],
+  "keywords": [
+    "carbon border adjustment mechanism",
+    "CBAM",
+    "rules as code",
+    "computational law",
+    "zero-knowledge proofs",
+    "embedded emissions",
+    "steel",
+    "aluminium",
+    "cement",
+    "fertilisers",
+    "downstream goods",
+    "supply-chain privacy",
+    "data sovereignty",
+    "open source"
+  ],
+  "license": "CC-BY-4.0",
+  "language": "eng",
+  "access_right": "open",
+  "version": "1.1",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/kaimeter/kaimeter",
+      "relation": "isSupplementedBy",
+      "scheme": "url"
+    }
+  ],
+  "notes": "Kaimeter Working Paper 2026-01. Text licensed under CC BY 4.0; reference implementation code under Apache-2.0."
+}

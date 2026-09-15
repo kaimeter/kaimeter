@@ -1,0 +1,117 @@
+% Pandoc LaTeX template for the Kaimeter working papers.
+% Build with paper/build.ps1 (Pandoc and XeLaTeX).
+
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{unicode}{hyperref}
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{amsmath,amssymb}
+\usepackage{fontspec}
+\defaultfontfeatures{Scale=MatchLowercase}
+\defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{framed}
+\usepackage{longtable,booktabs,array}
+\usepackage{caption}
+\captionsetup[table]{skip=6pt}
+\newcounter{none}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage{eurosym}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{bookmark}
+
+% The source headings carry their own numbers, so LaTeX must not add any.
+\setcounter{secnumdepth}{-\maxdimen}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Pandoc emits \pandocbounded around images so they fit the text block.
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{%
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi}
+\def\fps@figure{htbp}
+\makeatother
+
+% Symbols that Latin Modern cannot typeset; paper/filters/paper.lua emits
+% these commands in place of the Unicode characters.
+\newcommand{\xmark}{\ensuremath{\times}}
+\newcommand{\halfcircle}{%
+  \tikz[baseline=-0.55ex]{\fill (0,0.55ex) arc[start angle=90, end angle=270, radius=0.55ex] -- cycle; \draw (0,0) circle[radius=0.55ex];}%
+}
+
+$highlighting-macros$
+
+\hypersetup{
+  pdftitle={$title$: $subtitle$},
+  pdfauthor={$author$},
+  pdfsubject={$series$, version $version$},
+  pdfkeywords={$for(keywords)$$keywords$$sep$, $endfor$},
+  pdflang={en},
+  pdfcreator={Pandoc with XeLaTeX},
+  colorlinks=true,
+  linkcolor={blue!80!black},
+  filecolor={blue!80!black},
+  citecolor={blue!80!black},
+  urlcolor={blue!80!black},
+}
+
+% A content-derived trailer ID keeps repeated builds byte-identical.
+$if(pdf-trailer-id)$
+\special{pdf:trailerid [ $pdf-trailer-id$ ]}
+$endif$
+
+% The metadata date is ISO month (YYYY-MM); render it as a month name.
+\def\paperdate#1-#2\relax{%
+  \ifcase#2\relax
+  \or January\or February\or March\or April\or May\or June%
+  \or July\or August\or September\or October\or November\or December%
+  \fi\ #1}
+\def\docdate{$date$}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{2.5cm}
+  {\Huge\bfseries $title$\par}
+  \vspace{0.8cm}
+  {\Large $subtitle$\par}
+  \vfill
+  {\large $author$\par}
+  \vspace{0.3cm}
+  {\normalsize $affiliation$\par}
+  \vspace{0.3cm}
+  {\normalsize ORCID: \href{https://orcid.org/$orcid$}{$orcid$}\par}
+  \vfill
+  {\large $series$\par}
+  \vspace{0.3cm}
+  {\normalsize Version $version$ \ensuremath{\cdot}\ \expandafter\paperdate\docdate\relax\par}
+  \vspace{1cm}
+  {\normalsize DOI: \href{https://doi.org/$doi$}{$doi$}\par}
+  \vfill
+  {\small Text \textcopyright\ 2026 $author$, licensed under the
+   \href{https://creativecommons.org/licenses/by/4.0/}{Creative Commons Attribution 4.0 International licence (CC BY 4.0)}.\\
+   Code licensed under the \href{https://www.apache.org/licenses/LICENSE-2.0}{Apache License 2.0}.\par}
+  \vspace{0.8cm}
+  {\footnotesize \textbf{Keywords:} $for(keywords)$$keywords$$sep$, $endfor$\par}
+\end{titlepage}
+
+$body$
+
+\end{document}
