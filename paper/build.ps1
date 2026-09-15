@@ -42,11 +42,12 @@ $date = Get-MetadataField 'date'
 
 if (-not $Output) {
     $slug = ($series.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
-    $fileName = '{0}-v{1}.pdf' -f $slug, $version
-    $Output = Join-Path $paperDir "dist/$fileName"
+    $Output = Join-Path $paperDir ('dist/{0}-v{1}.pdf' -f $slug, $version)
 }
 
 $outputDir = Split-Path -Parent $Output
+$stem = [System.IO.Path]::GetFileNameWithoutExtension($Output)
+$texPath = Join-Path $outputDir "$stem.tex"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 $year, $month = $date -split '-'
@@ -54,19 +55,50 @@ $epoch = [DateTimeOffset]::new([int]$year, [int]$month, 1, 0, 0, 0, [TimeSpan]::
 $env:SOURCE_DATE_EPOCH = $epoch.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:FORCE_SOURCE_DATE = '1'
 
+# Deriving the PDF trailer ID from the inputs keeps repeated builds identical.
+$inputBytes = [System.Collections.Generic.List[byte]]::new()
+foreach ($path in @($sourcePath, $metadataPath, $templatePath, $filterPath)) {
+    $inputBytes.AddRange([System.IO.File]::ReadAllBytes($path))
+}
+$digest = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($inputBytes.ToArray())).ToLowerInvariant()
+$trailerId = '<{0}> <{1}>' -f $digest.Substring(0, 32), $digest.Substring(32, 32)
+
 $pandocArgs = @(
     $sourcePath
     '--from', 'markdown'
     '--metadata-file', $metadataPath
     '--template', $templatePath
     '--lua-filter', $filterPath
-    '--pdf-engine', 'xelatex'
-    '--output', $Output
+    '--variable', "pdf-trailer-id=$trailerId"
+    '--to', 'latex'
+    '--standalone'
+    '--output', $texPath
 )
 
 & pandoc @pandocArgs
 if ($LASTEXITCODE -ne 0) {
     throw "pandoc exited with code $LASTEXITCODE"
+}
+
+# Two passes resolve the internal links; stable file names keep the font
+# subset tags reproducible.
+$latexArgs = @(
+    '-halt-on-error'
+    '-interaction=nonstopmode'
+    '-file-line-error'
+    "-output-directory=$outputDir"
+    $texPath
+)
+foreach ($pass in 1..2) {
+    $latexOutput = & xelatex @latexArgs 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $latexOutput | Write-Host
+        throw "xelatex exited with code $LASTEXITCODE on pass $pass"
+    }
+}
+
+foreach ($extension in @('aux', 'log', 'out', 'toc')) {
+    Remove-Item -LiteralPath (Join-Path $outputDir "$stem.$extension") -Force -ErrorAction SilentlyContinue
 }
 
 $hash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()

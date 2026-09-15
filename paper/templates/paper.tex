@@ -65,11 +65,16 @@ $highlighting-macros$
   pdflang={en},
   pdfcreator={Pandoc with XeLaTeX},
   colorlinks=true,
-  linkcolor={Maroon},
-  filecolor={Maroon},
-  citecolor={Blue},
-  urlcolor={Blue},
+  linkcolor={blue!80!black},
+  filecolor={blue!80!black},
+  citecolor={blue!80!black},
+  urlcolor={blue!80!black},
 }
+
+% A content-derived trailer ID keeps repeated builds byte-identical.
+$if(pdf-trailer-id)$
+\special{pdf:trailerid [ $pdf-trailer-id$ ]}
+$endif$
 
 % The metadata date is ISO month (YYYY-MM); render it as a month name.
 \def\paperdate#1-#2\relax{%
