@@ -19,10 +19,14 @@ preferred-citation:
       orcid: "https://orcid.org/0009-0008-9061-6859"
       affiliation: "Keldrion, LLC"
   year: 2026
-  month: 9
+  date-published: "2026-09-15"
   version: "1.1"
   doi: "10.5281/zenodo.22740284"
   url: "https://doi.org/10.5281/zenodo.22740284"
+  identifiers:
+    - type: doi
+      value: "10.5281/zenodo.22740283"
+      description: "Concept DOI for all versions"
   license: CC-BY-4.0
   keywords:
     - carbon border adjustment mechanism
