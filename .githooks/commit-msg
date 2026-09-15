@@ -1,0 +1,27 @@
+#!/bin/sh
+# Enforce Conventional Commits subjects and the DCO sign-off trailer.
+set -eu
+
+message_file="$1"
+subject=$(git stripspace --strip-comments <"$message_file" | sed -n '1p')
+
+case "$subject" in
+  Merge*|Revert*|fixup!*|squash!*)
+    exit 0
+    ;;
+esac
+
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'; then
+  echo "commit-msg: subject must be Conventional Commits, e.g. 'chore(tooling): pin toolchain'" >&2
+  exit 1
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  echo "commit-msg: subject is ${#subject} characters; keep it within 72" >&2
+  exit 1
+fi
+
+if ! grep -Eq '^Signed-off-by: .+ <[^<>@]+@[^<>]+>$' "$message_file"; then
+  echo "commit-msg: missing DCO sign-off; commit with 'git commit -s'" >&2
+  exit 1
+fi

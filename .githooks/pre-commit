@@ -1,0 +1,16 @@
+#!/bin/sh
+# Fast pre-commit checks. Heavy gates run in CI.
+set -eu
+
+if command -v cargo >/dev/null 2>&1 && [ -d crates ] && [ -n "$(ls -A crates 2>/dev/null)" ]; then
+  if ! cargo fmt --all -- --check; then
+    echo "pre-commit: run 'cargo fmt --all'" >&2
+    exit 1
+  fi
+fi
+
+if command -v cargo >/dev/null 2>&1 && [ -f xtask/Cargo.toml ]; then
+  cargo run --quiet -p xtask -- check-comments
+fi
+
+exit 0
