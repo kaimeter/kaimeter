@@ -1,0 +1,24 @@
+# Legal citations
+
+Provision-by-provision mapping of the rule bundle to the instruments it
+encodes. Each row corresponds to the `@legal` annotations on the code and to
+the `legal` field carried by every parameter table row.
+
+| Rule | Provision |
+| --- | --- |
+| `common::period::ReportingPeriod` | IR (EU) 2025/2547, Article 7 (identification of the reporting period) |
+| `common::markups::markup` | IR (EU) 2025/2621, Article 4(2), as corrected by IR (EU) 2026/1740 |
+| `common::defaults::default_value` | IR (EU) 2025/2621, Annex I, as corrected by IR (EU) 2026/1740; fallback rules per Commission Guidance No. 3, section 4.10 |
+| `common::defaults::precursor_default_value` | IR (EU) 2025/2621, Annex IV, as corrected by IR (EU) 2026/1740 |
+| `common::precursors::weighted_average` | IR (EU) 2025/2547, Articles 13-14; EU and excluded-origin zero-rating per Regulation (EU) 2023/956, Annex III |
+| `common::scope::classify` | Regulation (EU) 2023/956, Annex I, as amended by Regulation (EU) 2025/2083 |
+| `sectors::aluminium::pfc::slope` | IR (EU) 2025/2547, Annex II, sections B.7.1 (Equations 21-23) and B.7.3 (Equation 26) |
+| `sectors::aluminium::boundaries::see_primary_slope` | IR (EU) 2025/2547, Annex II, sections B and B.7 (system boundaries and PFC methods) |
+| `parameters/gwp.json` | IR (EU) 2025/2547, Annex II, section G, Table 6 |
+| `parameters/default-values-annex-I.json` | IR (EU) 2025/2621, Annex I, as corrected by IR (EU) 2026/1740 |
+| `parameters/default-values-annex-IV.json` | IR (EU) 2025/2621, Annex IV, as corrected by IR (EU) 2026/1740 |
+
+The instruments are published on EUR-Lex under the ELI links recorded in the
+`@source` annotations; the Commission's CBAM legislation and guidance page
+carries the guidance documents and the default-values workbook from which the
+parameter tables are generated.

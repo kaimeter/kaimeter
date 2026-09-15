@@ -18,14 +18,19 @@ and version/DOI consistency.
 
 ## Reference implementation
 
-No crate has been released yet. `kaimeter-rules` v0.1 is targeted for October
-2026 with the aluminium bundle and the Appendix B vector passing at full
-precision; the planned releases are in §10 of the working paper and tracked in
-the root README.
+`kaimeter-rules` 0.1.0 implements the aluminium bundle (`2026.2.0`, canonical
+identity `sha256:cd4f4446cf09ac8c0b5bb5a5cf91dd774eeb885c034674c09507696f60604c27`):
+reporting-period and sector-dependent mark-up rules, default-value selection
+with the other-countries and Annex IV fallbacks, Art. 14 precursor averaging,
+the Annex I aluminium scope table, the primary route with slope-method PFCs,
+and stubs for the remaining sectors. `bundle-hash` prints the canonical
+identity, and the Appendix B vector passes at full fixed-point precision. No
+prover is included; the first zkVM guest is planned for v0.2.
 
-Rust quality gates and mutation testing are configured and activate when
-`crates/` appears. The comment policy is enforced from the first commit that
-carries `xtask/`.
+The crate suite (113 tests), rustfmt, Clippy with `-D warnings`, rustdoc, the
+comment policy, coverage and mutation testing run in CI. The v0.1 release is
+pending; the planned releases are in §10 of the working paper and tracked in
+the root README.
 
 ## Repository
 
@@ -33,7 +38,9 @@ carries `xtask/`.
 | --- | --- |
 | Working paper sources | Published as v1.1; sources in `paper/` |
 | Paper PDF build | Reproducible, pinned `pandoc/latex:3.11` image |
+| Rule bundle | `kaimeter-rules` 0.1.0, bundle `2026.2.0`, canonical SHA-256 identity |
+| Parameter tables | Aluminium defaults (Annex I, other countries, Annex IV) and GWP, with row-level provenance |
 | Comment policy | `cargo xtask check-comments`, wired into the pre-commit hook |
-| Rust quality gates | Path-filtered to `crates/**` until v0.1 lands |
+| Rust quality gates | Workspace-wide: format, clippy, tests, coverage, cargo-deny, rustdoc, mutation testing |
 | Citation metadata | `CITATION.cff` and `.zenodo.json` for the v1.1 release |
-| Conformance vectors | Appendix B aluminium vector checked in verbatim |
+| Conformance vectors | Appendix B aluminium vector checked in verbatim and passing at full precision |

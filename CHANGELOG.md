@@ -1,8 +1,26 @@
 # Changelog
 
 Notable changes to the Kaimeter repository. The working paper is versioned as
-`paper-vX.Y`; the reference implementation will follow semantic versions from
+`paper-vX.Y`; the reference implementation follows semantic versions from
 v0.1.
+
+## Unreleased
+
+### Added
+
+- `kaimeter-rules` 0.1.0 (rule bundle `2026.2.0`): reporting-period and
+  sector-dependent mark-up rules, default-value selection with the
+  other-countries and Annex IV fallbacks, Art. 14 precursor averaging, the
+  Annex I aluminium scope table, the primary route with slope-method PFCs,
+  and sector and cross-sector stubs.
+- Canonical bundle serialisation and SHA-256 identity with the `bundle-hash`
+  binary.
+- Parameter tables with row-level legal, source and retrieval provenance, and
+  the stdlib-only workbook extraction tool.
+- Appendix B conformance vector, checked in verbatim and passing at full
+  fixed-point precision, and `CITATIONS.md` mapping every rule to its
+  provision.
+- Workspace-wide Rust quality gates and `xtask check-comments` enforcement.
 
 ## paper-v1.1 - 2026-09-15
 

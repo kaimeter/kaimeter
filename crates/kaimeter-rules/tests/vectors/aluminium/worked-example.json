@@ -1,0 +1,25 @@
+{
+  "bundle": "cbam",
+  "sector": "aluminium",
+  "route": "primary",
+  "cn_code": "7601",
+  "period": "2026",
+  "method": "pfc_slope",
+  "parameters": {
+    "gwp_cf4": "6630",
+    "gwp_c2f6": "11100"
+  },
+  "inputs": {
+    "production_t": "100000",
+    "direct_co2_t": "155000",
+    "anode_effect_minutes_per_cell_day": "0.25",
+    "slope_emission_factor_cf4": "0.143",
+    "weight_fraction_c2f6_cf4": "0.121"
+  },
+  "expected": {
+    "e_cf4_t": "3.575000",
+    "e_c2f6_t": "0.432575",
+    "e_pfc_tco2e": "28503.832500",
+    "see_tco2e_per_t": "1.835038"
+  }
+}
