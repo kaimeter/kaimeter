@@ -1,0 +1,25 @@
+# Single source of truth for the working paper's metadata.
+title: "Prove, Don't Disclose"
+subtitle: "Verifiable CBAM Compliance Across Industrial Supply Chains Using Rules as Code and Zero-Knowledge Proofs"
+author: "Yiu Ming Patrick Ma"
+orcid: "0009-0008-9061-6859"
+affiliation: "Keldrion, LLC (Delaware, USA)"
+series: "Kaimeter Working Paper 2026-01"
+version: "1.1"
+date: "2026-09"
+doi: "10.5281/zenodo.22740284"
+keywords:
+  - carbon border adjustment mechanism
+  - CBAM
+  - rules as code
+  - computational law
+  - zero-knowledge proofs
+  - embedded emissions
+  - steel
+  - aluminium
+  - cement
+  - fertilisers
+  - downstream goods
+  - supply-chain privacy
+  - data sovereignty
+  - open source
