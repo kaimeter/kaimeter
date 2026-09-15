@@ -19,6 +19,15 @@ pub enum RuleError {
         /// The rejected calendar year.
         year: u16,
     },
+    /// A parameter table was not valid.
+    Parameters {
+        /// Table that failed to parse, for example `gwp`.
+        table: &'static str,
+        /// Line of the first parse error.
+        line: usize,
+        /// Column of the first parse error.
+        column: usize,
+    },
 }
 
 impl fmt::Display for RuleError {
@@ -31,6 +40,14 @@ impl fmt::Display for RuleError {
             Self::UnsupportedPeriod { year } => {
                 write!(formatter, "reporting period {year} is outside the bundle")
             }
+            Self::Parameters {
+                table,
+                line,
+                column,
+            } => write!(
+                formatter,
+                "invalid parameter table `{table}` at line {line}, column {column}"
+            ),
         }
     }
 }
@@ -53,6 +70,15 @@ mod tests {
         assert_eq!(
             RuleError::UnsupportedPeriod { year: 2025 }.to_string(),
             "reporting period 2025 is outside the bundle"
+        );
+        assert_eq!(
+            RuleError::Parameters {
+                table: "gwp",
+                line: 2,
+                column: 7,
+            }
+            .to_string(),
+            "invalid parameter table `gwp` at line 2, column 7"
         );
     }
 }
