@@ -1,0 +1,21 @@
+{
+  "bundle": "cbam",
+  "version": "2026.2.0",
+  "jurisdiction": "EU",
+  "sectors": ["aluminium"],
+  "appliesFrom": "2026-01-01",
+  "appliesTo": null,
+  "legalBasis": [
+    "Regulation (EU) 2023/956",
+    "Implementing Regulation (EU) 2025/2547",
+    "Implementing Regulation (EU) 2025/2621 as corrected by Implementing Regulation (EU) 2026/1740"
+  ],
+  "supersedes": "2026.1.x",
+  "changelog": [
+    {
+      "version": "2026.2.0",
+      "note": "v0.1 aluminium bundle: corrected default values of IR (EU) 2026/1740; primary route with slope-method PFCs."
+    }
+  ],
+  "excludedPaths": ["tests/**", "tools/**", "src/bin/**"]
+}

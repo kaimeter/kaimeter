@@ -16,5 +16,8 @@
 // The bundle stays free of floating-point arithmetic (whitepaper §4.4).
 #![deny(clippy::float_arithmetic)]
 
+extern crate alloc;
+
+pub mod bundle;
 pub mod error;
 pub mod fixed;
