@@ -1,5 +1,5 @@
 #!/bin/sh
-# Enforce Conventional Commits subjects and the DCO sign-off trailer.
+# Enforce area-prefix subjects and the DCO sign-off trailer.
 set -eu
 
 message_file="$1"
@@ -11,8 +11,8 @@ case "$subject" in
     ;;
 esac
 
-if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'; then
-  echo "commit-msg: subject must be Conventional Commits, e.g. 'chore(tooling): pin toolchain'" >&2
+if ! printf '%s' "$subject" | grep -Eq '^[a-z][a-z0-9-]*: .+'; then
+  echo "commit-msg: subject must be '<area>: <imperative summary>', e.g. 'rules: add PFC slope method'" >&2
   exit 1
 fi
 

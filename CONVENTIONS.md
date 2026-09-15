@@ -5,12 +5,25 @@ How changes are written, tested and committed in this repository. See
 
 ## Commits
 
-- Conventional Commits: `type(scope): imperative subject`, at most 72
-  characters. Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`,
-  `test`, `build`, `ci`, `chore`, `revert`.
-- Every commit is signed and carries a DCO `Signed-off-by` trailer
-  (`git commit -s`). `main` requires both, and history is linear.
-- One atomic concern per commit; unrelated changes are never bundled.
+Subjects follow the subsystem-prefix style of the Linux kernel and Tokio:
+`area: imperative summary`, lowercase area, at most 72 characters.
+Recommended areas: `paper`, `rules`, `core`, `app`, `xtask`, `ci`,
+`tooling`, `repo`, `release`.
+
+Changes to rule code or parameter tables carry provenance trailers —
+`Bundle:` and `Legal:` required, `Supersedes:` where applicable:
+
+```text
+Bundle: 2026.2.0
+Supersedes: 2026.1.x
+Legal: IR (EU) 2026/1740
+```
+
+Paper revisions carry `Paper: vX.Y`. Bodies explain why, not what, and
+reference issues with `Fixes:` or `Closes:` where applicable. Every commit
+is signed and carries a DCO `Signed-off-by` trailer (`git commit -s`);
+`main` requires both, and history is linear. One atomic concern per commit;
+unrelated changes are never bundled.
 
 ## Tests
 
