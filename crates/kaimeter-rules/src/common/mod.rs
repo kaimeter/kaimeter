@@ -6,6 +6,7 @@
 pub mod defaults;
 pub mod markups;
 pub mod period;
+pub mod precursors;
 
 /// A CBAM sector covered by this bundle.
 ///

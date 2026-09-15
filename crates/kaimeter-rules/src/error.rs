@@ -32,6 +32,8 @@ pub enum RuleError {
     InvalidCnCode,
     /// No default value covers the good.
     NoDefaultValue,
+    /// No precursor supplies were offered.
+    NoPrecursors,
 }
 
 impl fmt::Display for RuleError {
@@ -54,6 +56,7 @@ impl fmt::Display for RuleError {
             ),
             Self::InvalidCnCode => formatter.write_str("invalid CN code"),
             Self::NoDefaultValue => formatter.write_str("no default value for the good"),
+            Self::NoPrecursors => formatter.write_str("no precursor supplies"),
         }
     }
 }
@@ -91,5 +94,6 @@ mod tests {
             RuleError::NoDefaultValue.to_string(),
             "no default value for the good"
         );
+        assert_eq!(RuleError::NoPrecursors.to_string(), "no precursor supplies");
     }
 }
