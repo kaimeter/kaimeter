@@ -36,6 +36,8 @@ pub enum RuleError {
     NoPrecursors,
     /// No scope entry covers the good on the given date.
     OutOfScope,
+    /// A required parameter is missing from a table.
+    MissingParameter,
 }
 
 impl fmt::Display for RuleError {
@@ -60,6 +62,7 @@ impl fmt::Display for RuleError {
             Self::NoDefaultValue => formatter.write_str("no default value for the good"),
             Self::NoPrecursors => formatter.write_str("no precursor supplies"),
             Self::OutOfScope => formatter.write_str("CN code is outside the bundle's scope"),
+            Self::MissingParameter => formatter.write_str("required parameter is missing"),
         }
     }
 }
@@ -101,6 +104,10 @@ mod tests {
         assert_eq!(
             RuleError::OutOfScope.to_string(),
             "CN code is outside the bundle's scope"
+        );
+        assert_eq!(
+            RuleError::MissingParameter.to_string(),
+            "required parameter is missing"
         );
     }
 }
