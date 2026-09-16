@@ -1,8 +1,10 @@
 # Fixed interpreter and guest contract (v0.2)
 
-Status: proposed. This record is checkpoint unit 1 of the v0.2 workstream
-(`guest: record the RISC Zero target and interpreter contract`). No guest code
-and no v0.2 rule code starts before it is accepted.
+Status: accepted (2026-09-16). This record is checkpoint unit 1 of the v0.2
+workstream (`guest: record the RISC Zero target and interpreter contract`).
+Accepted by the maintainer, which releases the remaining units: the
+interpreter crate, the `rules.json` rule content, the overvoltage and
+secondary routes, the differential suite and the guest.
 
 ## 1. Scope
 
