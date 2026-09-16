@@ -28,9 +28,9 @@ identity, and the Appendix B vector passes at full fixed-point precision. No
 prover is included; the first zkVM guest is planned for v0.2.
 
 The crate suite (113 tests), rustfmt, Clippy with `-D warnings`, rustdoc, the
-comment policy, coverage and mutation testing run in CI. The v0.1 release is
-pending; the planned releases are in §10 of the working paper and tracked in
-the root README.
+comment policy, coverage and mutation testing run in CI. v0.1.0 was released
+on 2026-09-16; the planned releases are in §10 of the working paper and
+tracked in the root README.
 
 ## Repository
 

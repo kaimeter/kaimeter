@@ -4,7 +4,7 @@ Notable changes to the Kaimeter repository. The working paper is versioned as
 `paper-vX.Y`; the reference implementation follows semantic versions from
 v0.1.
 
-## Unreleased
+## v0.1.0 - 2026-09-16
 
 ### Added
 
