@@ -18,7 +18,7 @@
     },
     {
       "version": "2026.3.0",
-      "note": "v0.2: canonical hashing re-exported from kaimeter-interpreter; aluminium rule content unchanged so far."
+      "note": "v0.2: canonical hashing re-exported from kaimeter-interpreter; the primary-route slope rule is now carried as rules.json data."
     }
   ],
   "excludedPaths": ["tests/**", "tools/**", "src/bin/**"]
