@@ -34,6 +34,38 @@ struct Vector {
 }
 
 #[test]
+fn rules_json_aggregates_a_two_supplier_complex_good() {
+    let files = [BundleFile {
+        path: "rules.json",
+        content: include_bytes!("../rules.json"),
+    }];
+    let bundle = RuleBundle::from_files(&files).unwrap();
+
+    let invocation = serde_json::json!({
+        "rule": "common.complex.see",
+        "context": {
+            "sector": "aluminium",
+            "route": "extrusion",
+            "cnCode": "7604 10 90",
+            "period": "2026",
+        },
+        "inputs": {
+            "production_t": "1000",
+            "direct_tco2e_t": "120",
+            "supplies": [
+                {"see_tco2e_per_t": "1.835038", "quantity_t": "600", "origin": "third_country"},
+                {"see_tco2e_per_t": "1.910", "quantity_t": "430", "origin": "third_country"},
+            ],
+        },
+    });
+    let invocation = bundle.parse_invocation(&invocation.to_string()).unwrap();
+    let outcome = bundle.evaluate(&invocation).unwrap();
+
+    assert_eq!(outcome.proves, "see_tco2e_per_t");
+    assert_eq!(outcome.output.to_string(), "2.042323");
+}
+
+#[test]
 fn rules_json_reproduces_the_appendix_b_vector() {
     let vector: Vector = serde_json::from_str(VECTOR).unwrap();
 
