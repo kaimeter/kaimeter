@@ -10,7 +10,7 @@
 
 use crate::error::RuleError;
 use crate::fixed::Fixed;
-use crate::sectors::aluminium::pfc::{self, Gwp, SlopeInput};
+use crate::sectors::aluminium::pfc::{self, Gwp, OvervoltageInput, SlopeInput};
 
 /// Primary-route emissions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,6 +41,31 @@ pub fn see_primary_slope(
     gwp: &Gwp,
 ) -> Result<PrimaryEmissions, RuleError> {
     let pfc = pfc::slope(input, gwp)?;
+    let attributed = direct_co2_t.try_add(pfc.pfc_tco2e)?;
+    Ok(PrimaryEmissions {
+        cf4_t: pfc.cf4_t,
+        c2f6_t: pfc.c2f6_t,
+        pfc_tco2e: pfc.pfc_tco2e,
+        see_tco2e_per_t: attributed.try_div(input.production_t)?,
+    })
+}
+
+/// Computes the specific embedded emissions of primary aluminium, overvoltage
+/// method.
+///
+/// The attributed emissions are the directly monitored CO2 plus the PFC
+/// emissions, divided by the primary aluminium produced.
+///
+/// # Errors
+///
+/// Returns [`RuleError::DivisionByZero`] for zero production and
+/// [`RuleError::Overflow`] when the arithmetic leaves the scaled range.
+pub fn see_primary_overvoltage(
+    input: &OvervoltageInput,
+    direct_co2_t: Fixed,
+    gwp: &Gwp,
+) -> Result<PrimaryEmissions, RuleError> {
+    let pfc = pfc::overvoltage(input, gwp)?;
     let attributed = direct_co2_t.try_add(pfc.pfc_tco2e)?;
     Ok(PrimaryEmissions {
         cf4_t: pfc.cf4_t,
@@ -138,5 +163,45 @@ mod tests {
     #[test]
     fn secondary_route_is_not_implemented() {
         assert_eq!(see_secondary(), Err(RuleError::NotYetImplemented));
+    }
+
+    fn overvoltage_input() -> OvervoltageInput {
+        OvervoltageInput {
+            anode_effect_overvoltage_mv: fixed("2.5"),
+            current_efficiency_percent: fixed("96"),
+            overvoltage_coefficient_cf4: fixed("1.16"),
+            weight_fraction_c2f6_cf4: fixed("0.121"),
+            production_t: fixed("100000"),
+        }
+    }
+
+    #[test]
+    fn divides_overvoltage_attributed_emissions_by_production() {
+        let emissions =
+            see_primary_overvoltage(&overvoltage_input(), fixed("155000"), &gwp()).unwrap();
+        assert_eq!(emissions.cf4_t, fixed("3.0209"));
+        assert_eq!(emissions.c2f6_t, fixed("0.365529"));
+        assert_eq!(emissions.pfc_tco2e, fixed("24085.9389"));
+        assert_eq!(emissions.see_tco2e_per_t, fixed("1.790859"));
+    }
+
+    #[test]
+    fn reports_zero_production_for_overvoltage() {
+        let input = OvervoltageInput {
+            production_t: Fixed::ZERO,
+            ..overvoltage_input()
+        };
+        assert_eq!(
+            see_primary_overvoltage(&input, fixed("155000"), &gwp()),
+            Err(RuleError::DivisionByZero)
+        );
+    }
+
+    #[test]
+    fn reports_overflow_for_overvoltage_see() {
+        assert_eq!(
+            see_primary_overvoltage(&overvoltage_input(), Fixed::from_scaled(i128::MAX), &gwp()),
+            Err(RuleError::Overflow)
+        );
     }
 }

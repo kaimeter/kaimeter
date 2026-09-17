@@ -66,6 +66,59 @@ fn rules_json_aggregates_a_two_supplier_complex_good() {
 }
 
 #[test]
+fn rules_json_reproduces_the_overvoltage_method() {
+    let files = [
+        BundleFile {
+            path: "rules.json",
+            content: include_bytes!("../rules.json"),
+        },
+        BundleFile {
+            path: "parameters/gwp.json",
+            content: include_bytes!("../parameters/gwp.json"),
+        },
+    ];
+    let bundle = RuleBundle::from_files(&files).unwrap();
+
+    let invocation = serde_json::json!({
+        "rule": "aluminium.primary.overvoltage",
+        "context": {
+            "sector": "aluminium",
+            "route": "primary",
+            "cnCode": "7601 10 00",
+            "period": "2026",
+        },
+        "inputs": {
+            "production_t": "100000",
+            "direct_co2_t": "155000",
+            "anode_effect_overvoltage_mv": "2.5",
+            "current_efficiency_percent": "96",
+            "overvoltage_coefficient_cf4": "1.16",
+            "weight_fraction_c2f6_cf4": "0.121",
+        },
+    });
+    let invocation = bundle.parse_invocation(&invocation.to_string()).unwrap();
+    let outcome = bundle.evaluate(&invocation).unwrap();
+
+    assert_eq!(outcome.proves, "see_tco2e_per_t");
+    assert_eq!(
+        outcome.outputs["cf4_t"].as_scalar().unwrap().to_string(),
+        "3.020900"
+    );
+    assert_eq!(
+        outcome.outputs["c2f6_t"].as_scalar().unwrap().to_string(),
+        "0.365529"
+    );
+    assert_eq!(
+        outcome.outputs["pfc_tco2e"]
+            .as_scalar()
+            .unwrap()
+            .to_string(),
+        "24085.938900"
+    );
+    assert_eq!(outcome.output.to_string(), "1.790859");
+}
+
+#[test]
 fn rules_json_reproduces_the_appendix_b_vector() {
     let vector: Vector = serde_json::from_str(VECTOR).unwrap();
 

@@ -2,10 +2,11 @@
 //!
 //! Primary aluminium smelting releases CF4 and C2F6 during anode effects.
 //! The slope method uses the anode effect minutes per cell-day and a
-//! technology-specific slope emission factor; the overvoltage method arrives
-//! with v0.2.
+//! technology-specific slope emission factor; the overvoltage method uses
+//! the anode effect overvoltage per cell and the current efficiency. Both
+//! convert the two gases to `CO2e` with the GWP table.
 //!
-//! @legal  IR (EU) 2025/2547, Annex II, section B.7.1
+//! @legal  IR (EU) 2025/2547, Annex II, sections B.7.1-B.7.3
 //! @source <http://data.europa.eu/eli/reg_impl/2025/2547/oj>
 //! @since  bundle 2026.2.0
 
@@ -63,9 +64,9 @@ pub struct SlopeInput {
     pub production_t: Fixed,
 }
 
-/// Slope-method emissions.
+/// PFC emissions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SlopeEmissions {
+pub struct PfcEmissions {
     /// CF4 emissions, t.
     pub cf4_t: Fixed,
     /// C2F6 emissions, t.
@@ -80,7 +81,7 @@ pub struct SlopeEmissions {
 ///
 /// Returns [`RuleError::Overflow`] when the arithmetic leaves the scaled
 /// range.
-pub fn slope(input: &SlopeInput, gwp: &Gwp) -> Result<SlopeEmissions, RuleError> {
+pub fn slope(input: &SlopeInput, gwp: &Gwp) -> Result<PfcEmissions, RuleError> {
     let cf4_t = input
         .anode_effect_minutes_per_cell_day
         .try_mul(input.slope_emission_factor_cf4)?
@@ -89,7 +90,53 @@ pub fn slope(input: &SlopeInput, gwp: &Gwp) -> Result<SlopeEmissions, RuleError>
     let c2f6_t = cf4_t.try_mul(input.weight_fraction_c2f6_cf4)?;
     let cf4_co2e = cf4_t.try_mul(gwp.cf4)?;
     let c2f6_co2e = c2f6_t.try_mul(gwp.c2f6)?;
-    Ok(SlopeEmissions {
+    Ok(PfcEmissions {
+        cf4_t,
+        c2f6_t,
+        pfc_tco2e: cf4_co2e.try_add(c2f6_co2e)?,
+    })
+}
+
+/// Overvoltage-method activity data for one reporting period.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OvervoltageInput {
+    /// Anode effect overvoltage per cell, AEO, mV.
+    pub anode_effect_overvoltage_mv: Fixed,
+    /// Average current efficiency of aluminium production, CE, per cent.
+    pub current_efficiency_percent: Fixed,
+    /// Overvoltage coefficient, OVC, (kg CF4 / t Al) / mV.
+    pub overvoltage_coefficient_cf4: Fixed,
+    /// Weight fraction of C2F6 per CF4, F.
+    pub weight_fraction_c2f6_cf4: Fixed,
+    /// Primary aluminium produced, t.
+    pub production_t: Fixed,
+}
+
+/// Computes PFC emissions with the overvoltage method.
+///
+/// Method B of Annex II, section B.7.2: the CF4 emissions are the overvoltage
+/// coefficient times the ratio of the anode effect overvoltage to the current
+/// efficiency, times production; C2F6 follows from the weight fraction, and
+/// both gases convert to `CO2e` with the GWP table (Equations 24-26).
+///
+/// # Errors
+///
+/// Returns [`RuleError::DivisionByZero`] for zero current efficiency and
+/// [`RuleError::Overflow`] when the arithmetic leaves the scaled range.
+pub fn overvoltage(input: &OvervoltageInput, gwp: &Gwp) -> Result<PfcEmissions, RuleError> {
+    let cf4_t = input
+        .overvoltage_coefficient_cf4
+        .try_mul(
+            input
+                .anode_effect_overvoltage_mv
+                .try_div(input.current_efficiency_percent)?,
+        )?
+        .try_mul(input.production_t)?
+        .try_div(THOUSAND)?;
+    let c2f6_t = cf4_t.try_mul(input.weight_fraction_c2f6_cf4)?;
+    let cf4_co2e = cf4_t.try_mul(gwp.cf4)?;
+    let c2f6_co2e = c2f6_t.try_mul(gwp.c2f6)?;
+    Ok(PfcEmissions {
         cf4_t,
         c2f6_t,
         pfc_tco2e: cf4_co2e.try_add(c2f6_co2e)?,
@@ -176,5 +223,47 @@ mod tests {
             production_t: fixed("1"),
         };
         assert_eq!(slope(&input, &appendix_b_gwp()), Err(RuleError::Overflow));
+    }
+
+    fn overvoltage_input() -> OvervoltageInput {
+        OvervoltageInput {
+            anode_effect_overvoltage_mv: fixed("2.5"),
+            current_efficiency_percent: fixed("96"),
+            overvoltage_coefficient_cf4: fixed("1.16"),
+            weight_fraction_c2f6_cf4: fixed("0.121"),
+            production_t: fixed("100000"),
+        }
+    }
+
+    #[test]
+    fn scales_the_overvoltage_activity_data() {
+        let emissions = overvoltage(&overvoltage_input(), &appendix_b_gwp()).unwrap();
+        assert_eq!(emissions.cf4_t, fixed("3.0209"));
+        assert_eq!(emissions.c2f6_t, fixed("0.365529"));
+        assert_eq!(emissions.pfc_tco2e, fixed("24085.9389"));
+    }
+
+    #[test]
+    fn reports_zero_current_efficiency() {
+        let input = OvervoltageInput {
+            current_efficiency_percent: Fixed::ZERO,
+            ..overvoltage_input()
+        };
+        assert_eq!(
+            overvoltage(&input, &appendix_b_gwp()),
+            Err(RuleError::DivisionByZero)
+        );
+    }
+
+    #[test]
+    fn reports_overflow_for_overvoltage() {
+        let input = OvervoltageInput {
+            overvoltage_coefficient_cf4: Fixed::from_scaled(i128::MAX),
+            ..overvoltage_input()
+        };
+        assert_eq!(
+            overvoltage(&input, &appendix_b_gwp()),
+            Err(RuleError::Overflow)
+        );
     }
 }

@@ -14,8 +14,11 @@ the `legal` field carried by every parameter table row.
 | `common::precursors::see_complex` | Regulation (EU) 2023/956, Annex IV (complex goods); IR (EU) 2025/2547, Articles 13-14 |
 | `common::scope::classify` | Regulation (EU) 2023/956, Annex I, as amended by Regulation (EU) 2025/2083 |
 | `sectors::aluminium::pfc::slope` | IR (EU) 2025/2547, Annex II, sections B.7.1 (Equations 21-23) and B.7.3 (Equation 26) |
+| `sectors::aluminium::pfc::overvoltage` | IR (EU) 2025/2547, Annex II, sections B.7.2 (Equations 24-25) and B.7.3 (Equation 26) |
 | `sectors::aluminium::boundaries::see_primary_slope` | IR (EU) 2025/2547, Annex II, sections B and B.7 (system boundaries and PFC methods) |
+| `sectors::aluminium::boundaries::see_primary_overvoltage` | IR (EU) 2025/2547, Annex II, sections B and B.7 (system boundaries and PFC methods) |
 | `rules.json` (`aluminium.primary.slope`) | IR (EU) 2025/2547, Annex II, sections B.7.1 and B.7.3 (Equations 21-23 and 26) |
+| `rules.json` (`aluminium.primary.overvoltage`) | IR (EU) 2025/2547, Annex II, sections B.7.2 and B.7.3 (Equations 24-26) |
 | `rules.json` (`common.complex.see`) | Regulation (EU) 2023/956, Annex IV (complex goods); IR (EU) 2025/2547, Articles 13-14 |
 | `parameters/gwp.json` | IR (EU) 2025/2547, Annex II, section G, Table 6 |
 | `parameters/default-values-annex-I.json` | IR (EU) 2025/2621, Annex I, as corrected by IR (EU) 2026/1740 |
