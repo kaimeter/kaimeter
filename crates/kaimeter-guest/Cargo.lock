@@ -1513,8 +1513,18 @@ dependencies = [
 name = "kaimeter-guest-host"
 version = "0.1.0"
 dependencies = [
+ "kaimeter-interpreter",
  "risc0-build",
  "risc0-zkvm",
+]
+
+[[package]]
+name = "kaimeter-interpreter"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

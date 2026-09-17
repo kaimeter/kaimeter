@@ -8,6 +8,7 @@ publish = false
 risc0-build = { version = "=3.0.6" }
 
 [dependencies]
+kaimeter-interpreter = { path = "../../kaimeter-interpreter" }
 risc0-zkvm = { version = "=3.0.6" }
 
 [package.metadata.risc0]
