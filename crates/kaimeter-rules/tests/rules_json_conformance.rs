@@ -119,6 +119,38 @@ fn rules_json_reproduces_the_overvoltage_method() {
 }
 
 #[test]
+fn rules_json_reproduces_the_secondary_route() {
+    let files = [BundleFile {
+        path: "rules.json",
+        content: include_bytes!("../rules.json"),
+    }];
+    let bundle = RuleBundle::from_files(&files).unwrap();
+
+    let invocation = serde_json::json!({
+        "rule": "aluminium.secondary.see",
+        "context": {
+            "sector": "aluminium",
+            "route": "secondary",
+            "cnCode": "7601",
+            "period": "2026",
+        },
+        "inputs": {
+            "production_t": "950",
+            "direct_co2_t": "40",
+            "supplies": [
+                {"see_tco2e_per_t": "1.9", "quantity_t": "100", "origin": "third_country"},
+                {"see_tco2e_per_t": "9.9", "quantity_t": "30", "origin": "eu_or_excluded"},
+            ],
+        },
+    });
+    let invocation = bundle.parse_invocation(&invocation.to_string()).unwrap();
+    let outcome = bundle.evaluate(&invocation).unwrap();
+
+    assert_eq!(outcome.proves, "see_tco2e_per_t");
+    assert_eq!(outcome.output.to_string(), "0.242105");
+}
+
+#[test]
 fn rules_json_reproduces_the_appendix_b_vector() {
     let vector: Vector = serde_json::from_str(VECTOR).unwrap();
 

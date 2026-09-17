@@ -2,12 +2,14 @@
 //!
 //! The primary route attributes directly monitored CO2 plus PFC emissions
 //! from anode effects to the primary aluminium produced; the secondary route
-//! arrives with v0.2.
+//! attributes the direct emissions of melting and casting and treats added
+//! unwrought aluminium like a precursor.
 //!
-//! @legal  IR (EU) 2025/2547, Annex II, section B.7
+//! @legal  IR (EU) 2025/2547, Annex I, point 3.17.2.2, and Annex II, section B.7
 //! @source <http://data.europa.eu/eli/reg_impl/2025/2547/oj>
 //! @since  bundle 2026.2.0
 
+use crate::common::precursors::{self, PrecursorSupply};
 use crate::error::RuleError;
 use crate::fixed::Fixed;
 use crate::sectors::aluminium::pfc::{self, Gwp, OvervoltageInput, SlopeInput};
@@ -75,21 +77,29 @@ pub fn see_primary_overvoltage(
     })
 }
 
-/// Returns the specific embedded emissions of secondary aluminium.
+/// Computes the specific embedded emissions of secondary aluminium.
 ///
-/// The secondary route arrives with v0.2 (whitepaper §10); bundle 2026.2.0
-/// implements the primary route only.
+/// Secondary melting uses aluminium scrap as its main input, so the
+/// attributed emissions are the directly monitored CO2 of melting, scrap
+/// pre-treatment, casting and slag recovery. Unwrought aluminium added from
+/// other sources is treated like a precursor, and PFC emissions do not arise.
 ///
 /// # Errors
 ///
-/// Always [`RuleError::NotYetImplemented`] in bundle 2026.2.0.
-pub fn see_secondary() -> Result<Fixed, RuleError> {
-    Err(RuleError::NotYetImplemented)
+/// Returns [`RuleError::DivisionByZero`] for zero production and
+/// [`RuleError::Overflow`] when the arithmetic leaves the scaled range.
+pub fn see_secondary(
+    direct_co2_t: Fixed,
+    production_t: Fixed,
+    added_unwrought: &[PrecursorSupply],
+) -> Result<Fixed, RuleError> {
+    precursors::see_complex(direct_co2_t, production_t, added_unwrought)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::precursors::PrecursorOrigin;
 
     fn fixed(text: &str) -> Fixed {
         text.parse().unwrap()
@@ -160,9 +170,58 @@ mod tests {
         );
     }
 
+    fn third(see: &str, quantity: &str) -> PrecursorSupply {
+        PrecursorSupply {
+            see: fixed(see),
+            quantity_t: fixed(quantity),
+            origin: PrecursorOrigin::ThirdCountry,
+        }
+    }
+
+    fn zero_rated(see: &str, quantity: &str) -> PrecursorSupply {
+        PrecursorSupply {
+            see: fixed(see),
+            quantity_t: fixed(quantity),
+            origin: PrecursorOrigin::EuOrExcluded,
+        }
+    }
+
     #[test]
-    fn secondary_route_is_not_implemented() {
-        assert_eq!(see_secondary(), Err(RuleError::NotYetImplemented));
+    fn divides_secondary_direct_emissions_by_production() {
+        assert_eq!(
+            see_secondary(fixed("40"), fixed("950"), &[]).unwrap(),
+            fixed("0.042105")
+        );
+    }
+
+    #[test]
+    fn treats_added_unwrought_aluminium_as_a_precursor() {
+        let supplies = [third("1.9", "100"), zero_rated("9.9", "30")];
+        assert_eq!(
+            see_secondary(fixed("40"), fixed("950"), &supplies).unwrap(),
+            fixed("0.242105")
+        );
+    }
+
+    #[test]
+    fn reports_zero_production_for_secondary() {
+        assert_eq!(
+            see_secondary(fixed("40"), Fixed::ZERO, &[]),
+            Err(RuleError::DivisionByZero)
+        );
+    }
+
+    #[test]
+    fn reports_overflow_for_secondary() {
+        let supplies = [PrecursorSupply {
+            see: Fixed::from_scaled(i128::MAX),
+            quantity_t: Fixed::from_scaled(2_000_000),
+            origin: PrecursorOrigin::ThirdCountry,
+        }];
+        assert_eq!(
+            see_secondary(Fixed::ZERO, Fixed::ONE, &supplies),
+            Err(RuleError::Overflow)
+        );
     }
 
     fn overvoltage_input() -> OvervoltageInput {
