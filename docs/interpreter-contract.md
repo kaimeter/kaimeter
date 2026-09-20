@@ -40,8 +40,11 @@ the guest workspace and installed at those versions in CI.
 - The guest is built with the containerised `cargo risczero build`, so the ELF
   — and therefore the image ID a verifier pins — is reproducible from
   published source.
-- The image ID measured for v0.2 is pinned in a test, regenerated only by an
-  explicit interpreter change, and recorded with the release metadata.
+- Local guest builds embed the checkout path, so an absolute image ID is only
+  reproducible from the containerised build. v0.2 records the measured ID with
+  the release metadata; the pinned test and the container build follow with
+  the stable-image-ID work of v0.3 (whitepaper §10), including aligning the
+  container toolchain with the lockfile's dependency versions.
 - Guest builds and proving run on Linux only (CI or WSL2). The root workspace
   stays free of the RISC Zero toolchain so the native Windows gates keep
   passing.

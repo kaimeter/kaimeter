@@ -57,7 +57,6 @@ jobs:
           workspaces: crates/kaimeter-guest
       - name: Format
         run: cargo fmt --all --check
-      # Builds the guest ELF, checks the pinned image ID and runs the
-      # native/guest differential suite.
+      # Builds the guest ELF and runs the native/guest differential suite.
       - name: Build the guest and run the differential tests
         run: cargo test
