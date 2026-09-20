@@ -8,12 +8,12 @@
 use std::fs;
 use std::path::Path;
 
-use kaimeter_guest_host::KAIMETER_GUEST_ELF;
+use kaimeter_guest_host::{KAIMETER_GUEST_ELF, KAIMETER_GUEST_ID};
 use kaimeter_interpreter::bundle::{bundle_hash, BundleFile, BundleMetadata};
 use kaimeter_interpreter::fixed::Fixed;
 use kaimeter_interpreter::journal::JOURNAL_PREFIX;
 use kaimeter_interpreter::rule::RuleBundle;
-use risc0_zkvm::{default_executor, ExecutorEnv};
+use risc0_zkvm::{default_executor, default_prover, ExecutorEnv};
 
 /// The rule crate whose canonical file set is the witness.
 const RULES_CRATE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../kaimeter-rules");
@@ -76,6 +76,24 @@ fn invocation_text() -> String {
     .to_string()
 }
 
+/// Builds the executor environment for one witness.
+fn witness_env(
+    files: &[(String, Vec<u8>)],
+    invocation: &str,
+    claimed: &[u8],
+) -> ExecutorEnv<'static> {
+    let file_count = files.len() as u32;
+    let mut builder = ExecutorEnv::builder();
+    builder.write(&file_count).unwrap();
+    for (path, content) in files {
+        builder.write(path).unwrap();
+        builder.write(content).unwrap();
+    }
+    builder.write(&invocation.to_string()).unwrap();
+    builder.write(&claimed.to_vec()).unwrap();
+    builder.build().unwrap()
+}
+
 #[test]
 fn aluminium_appendix_b_journal_matches_natively() {
     let files = canonical_files(Path::new(RULES_CRATE));
@@ -91,18 +109,7 @@ fn aluminium_appendix_b_journal_matches_natively() {
     assert_eq!(outcome.output.to_string(), "1.835038");
     let expected = outcome.journal(hash, invocation.context).canonical_bytes();
 
-    let file_count = files.len() as u32;
-    let claimed = hash.as_bytes().to_vec();
-    let mut builder = ExecutorEnv::builder();
-    builder.write(&file_count).unwrap();
-    for (path, content) in &files {
-        builder.write(path).unwrap();
-        builder.write(content).unwrap();
-    }
-    builder.write(&invocation_text).unwrap();
-    builder.write(&claimed).unwrap();
-    let env = builder.build().unwrap();
-
+    let env = witness_env(&files, &invocation_text, hash.as_bytes());
     let session = default_executor().execute(env, KAIMETER_GUEST_ELF).unwrap();
     let committed = session.journal.bytes;
     assert_eq!(committed, expected);
@@ -117,5 +124,60 @@ fn aluminium_appendix_b_journal_matches_natively() {
     assert_eq!(
         Fixed::from_scaled(i128::from_le_bytes(scaled)).to_string(),
         "1.835038"
+    );
+}
+
+/// Measures the Appendix B execution and prints its cycle counts.
+///
+/// Ignored: pull requests execute without proving (interpreter contract §6).
+/// Run on demand with
+/// `cargo test --test aluminium -- --ignored --nocapture`.
+#[test]
+#[ignore = "measurement runs with the release metadata, not on pull requests"]
+fn measures_the_appendix_b_execution() {
+    let files = canonical_files(Path::new(RULES_CRATE));
+    let borrowed: Vec<BundleFile<'_>> = files
+        .iter()
+        .map(|(path, content)| BundleFile { path, content })
+        .collect();
+    let hash = bundle_hash(&borrowed).unwrap();
+    let invocation_text = invocation_text();
+    let env = witness_env(&files, &invocation_text, hash.as_bytes());
+
+    let session = default_executor().execute(env, KAIMETER_GUEST_ELF).unwrap();
+    let cycles: u32 = session.segments.iter().map(|segment| segment.cycles).sum();
+    println!(
+        "v0.2 execution: segments={} cycles={cycles}",
+        session.segments.len(),
+    );
+}
+
+/// Proves the Appendix B witness and prints the release measurement.
+///
+/// Ignored: pull requests execute without proving (interpreter contract §6).
+/// Proving needs more than a few gigabytes of RAM; run on CI or a larger
+/// instance with `cargo test --test aluminium -- --ignored --nocapture`.
+#[test]
+#[ignore = "proving runs with the release metadata, not on pull requests"]
+fn proves_the_appendix_b_witness() {
+    let files = canonical_files(Path::new(RULES_CRATE));
+    let borrowed: Vec<BundleFile<'_>> = files
+        .iter()
+        .map(|(path, content)| BundleFile { path, content })
+        .collect();
+    let hash = bundle_hash(&borrowed).unwrap();
+    let invocation_text = invocation_text();
+    let env = witness_env(&files, &invocation_text, hash.as_bytes());
+
+    let started = std::time::Instant::now();
+    let info = default_prover().prove(env, KAIMETER_GUEST_ELF).unwrap();
+    let elapsed = started.elapsed();
+    info.receipt.verify(KAIMETER_GUEST_ID).unwrap();
+    println!(
+        "v0.2 measurement: total_cycles={} user_cycles={} paging_cycles={} segments={} proving={elapsed:?}",
+        info.stats.total_cycles,
+        info.stats.user_cycles,
+        info.stats.paging_cycles,
+        info.stats.segments,
     );
 }
