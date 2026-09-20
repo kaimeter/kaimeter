@@ -29,6 +29,7 @@ Paper 2026-01).
 | Path | Purpose |
 | --- | --- |
 | `crates/` | Reference implementation crates (`kaimeter-rules`, `kaimeter-interpreter`) |
+| `tools/` | Repository tooling, including the on-demand AWS prover |
 | `paper/` | Working paper sources, LaTeX template, build script and conformance vectors |
 | `xtask/` | Repository automation, including the comment-policy check |
 | `.github/workflows/` | Rust quality gates and the paper build and validation workflow |
