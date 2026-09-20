@@ -12,6 +12,7 @@ kaimeter-interpreter = { path = "../../kaimeter-interpreter" }
 risc0-zkvm = { version = "=3.0.6" }
 
 [dev-dependencies]
+kaimeter-rules = { path = "../../kaimeter-rules" }
 serde_json = "1.0"
 
 [package.metadata.risc0]
