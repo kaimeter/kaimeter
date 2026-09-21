@@ -43,7 +43,8 @@ AWS_PROFILE=keldrion tools/prove-aws.sh \
 ```
 
 The default instance type is `c6i.2xlarge` (8 vCPU / 16 GB), the floor for
-the local prover. A run costs instance-minutes only and the script terminates
-the instance when it exits; `--keep` leaves it for inspection, `--dry-run`
-prints the remote script, `--ref` proves a specific pushed ref. The script
-needs GNU `base64` (Linux, WSL or Git Bash).
+the local prover, with a 40 GB root volume (`--volume-size` overrides both).
+A run costs instance-minutes only and the script terminates the instance when
+it exits; `--keep` leaves it for inspection, `--dry-run` prints the remote
+script, `--ref` proves a specific pushed ref. The script needs GNU `base64`
+(Linux, WSL or Git Bash).

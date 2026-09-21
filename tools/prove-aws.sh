@@ -13,6 +13,13 @@
 
 set -euo pipefail
 
+# Git Bash rewrites arguments that look like absolute POSIX paths into
+# Windows paths, which corrupts SSM parameter names such as
+# /aws/service/canonical/...; these variables disable that conversion and
+# are ignored outside MSYS.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 REPO_URL="https://github.com/kaimeter/kaimeter.git"
 DEFAULT_TYPE="c6i.2xlarge"
 DEFAULT_NAME="kaimeter-prove"
@@ -28,6 +35,7 @@ Options:
   --ref REF                 Branch or commit the instance proves
                             (default: the current branch, must be pushed)
   --instance-type TYPE      EC2 instance type (default: c6i.2xlarge)
+  --volume-size GB          Root volume size in GB (default: 40)
   --region REGION           AWS region (default: AWS_REGION/AWS_DEFAULT_REGION)
   --keep                    Do not terminate the instance on exit
   --dry-run                 Print the remote script and exit
@@ -46,6 +54,7 @@ die() {
 
 TYPE="$DEFAULT_TYPE"
 NAME="$DEFAULT_NAME"
+VOLUME_SIZE=40
 REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
 PROFILE="${PROVE_INSTANCE_PROFILE:-}"
 REF=""
@@ -57,6 +66,7 @@ while [ $# -gt 0 ]; do
         --instance-profile) PROFILE="${2:-}"; shift 2 ;;
         --ref) REF="${2:-}"; shift 2 ;;
         --instance-type) TYPE="${2:-}"; shift 2 ;;
+        --volume-size) VOLUME_SIZE="${2:-}"; shift 2 ;;
         --region) REGION="${2:-}"; shift 2 ;;
         --keep) KEEP=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
@@ -96,29 +106,33 @@ One-time setup:
 REMOTE_SCRIPT=$(cat <<'REMOTE_EOF'
 set -euo pipefail
 
+# SSM's shell runs without HOME; resolve it before anything uses it.
+export HOME="${HOME:-$(getent passwd "$(id -u)" | cut -d: -f6)}"
+export HOME="${HOME:-/root}"
+
 echo "== kaimeter prove: ref $REF"
 started=$(date +%s)
 
 export DEBIAN_FRONTEND=noninteractive
 echo "== installing build prerequisites"
-sudo apt-get update -qq
-sudo apt-get install -y -qq build-essential pkg-config libssl-dev curl git
+sudo apt-get update -qq >/dev/null 2>&1
+sudo apt-get install -y -qq build-essential pkg-config libssl-dev curl git >/dev/null 2>&1
 
 if ! command -v cargo >/dev/null 2>&1; then
   echo "== installing rustup"
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup.sh
-  sh /tmp/rustup.sh -y --profile minimal --component rustfmt >/dev/null
+  sh /tmp/rustup.sh -y --profile minimal --component rustfmt >/dev/null 2>&1
 fi
 export PATH="$HOME/.cargo/bin:$PATH"
 
 if [ ! -x "$HOME/.risc0/bin/rzup" ]; then
   echo "== installing rzup"
   curl -L https://risczero.com/install -o /tmp/rzup-install.sh
-  bash /tmp/rzup-install.sh >/dev/null
+  bash /tmp/rzup-install.sh >/dev/null 2>&1
 fi
 echo "== installing the pinned RISC Zero toolchain"
-"$HOME/.risc0/bin/rzup" install rust 1.97.0 >/dev/null
-"$HOME/.risc0/bin/rzup" install r0vm 3.0.6 >/dev/null
+"$HOME/.risc0/bin/rzup" install rust 1.97.0 >/dev/null 2>&1
+"$HOME/.risc0/bin/rzup" install r0vm 3.0.6 >/dev/null 2>&1
 export PATH="$HOME/.risc0/bin:$PATH"
 
 echo "== cloning $REPO_URL at $REF"
@@ -137,6 +151,7 @@ exit "$status"
 REMOTE_EOF
 )
 REMOTE_SCRIPT="REF='$REF'
+REPO_URL='$REPO_URL'
 $REMOTE_SCRIPT"
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -181,6 +196,8 @@ echo "== launching $TYPE"
 INSTANCE=$("${AWS[@]}" ec2 run-instances \
     --image-id "$AMI" \
     --instance-type "$TYPE" \
+    --block-device-mappings \
+        "DeviceName=/dev/sda1,Ebs={VolumeSize=$VOLUME_SIZE,VolumeType=gp3,DeleteOnTermination=true}" \
     --iam-instance-profile "Name=$PROFILE" \
     --subnet-id "$SUBNET" \
     --security-group-ids "$SG" \
@@ -216,9 +233,19 @@ COMMAND=$("${AWS[@]}" ssm send-command \
     --query 'Command.CommandId' --output text)
 echo "== command $COMMAND"
 
-"${AWS[@]}" ssm wait command-executed --command-id "$COMMAND" --instance-id "$INSTANCE" || true
-STATUS=$("${AWS[@]}" ssm get-command-invocation --command-id "$COMMAND" \
-    --instance-id "$INSTANCE" --query 'Status' --output text)
+STATUS=""
+for _ in $(seq 1 720); do
+    STATUS=$("${AWS[@]}" ssm get-command-invocation --command-id "$COMMAND" \
+        --instance-id "$INSTANCE" --query 'Status' --output text 2>/dev/null || echo Pending)
+    case "$STATUS" in
+        Success|Failed|TimedOut|Cancelled) break ;;
+    esac
+    sleep 10
+done
+case "$STATUS" in
+    Success|Failed|TimedOut|Cancelled) ;;
+    *) die "remote command did not finish (last status '$STATUS')" ;;
+esac
 "${AWS[@]}" ssm get-command-invocation --command-id "$COMMAND" \
     --instance-id "$INSTANCE" --query 'StandardOutputContent' --output text
 STDERR=$("${AWS[@]}" ssm get-command-invocation --command-id "$COMMAND" \
