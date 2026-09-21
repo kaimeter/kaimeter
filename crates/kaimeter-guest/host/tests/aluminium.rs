@@ -1,15 +1,18 @@
 //! The aluminium witness: bundle `2026.3.0` evaluated in the guest.
 //!
-//! The witness is the canonical file set of `kaimeter-rules` — the set the
-//! pinned identity covers — plus the Appendix B invocation and the claimed
-//! hash. The journal the guest commits must equal the native computation, and
-//! its output field must carry the vector's value at full precision.
+//! The witness is the pinned root of the `kaimeter-rules` canonical file set
+//! plus inclusion proofs for the files the evaluation reads, so the guest
+//! authenticates every byte it touches without seeing the rest of the crate.
+//! The journal the guest commits must equal the native computation, and its
+//! output field must carry the vector's value at full precision.
 
 use std::fs;
 use std::path::Path;
 
 use kaimeter_guest_host::{KAIMETER_GUEST_ELF, KAIMETER_GUEST_ID};
-use kaimeter_interpreter::bundle::{bundle_hash, BundleFile, BundleMetadata};
+use kaimeter_interpreter::bundle::{
+    bundle_hash, open_file, BundleFile, BundleHash, BundleMetadata, Opening,
+};
 use kaimeter_interpreter::fixed::Fixed;
 use kaimeter_interpreter::journal::JOURNAL_PREFIX;
 use kaimeter_interpreter::rule::RuleBundle;
@@ -17,6 +20,9 @@ use risc0_zkvm::{default_executor, default_prover, ExecutorEnv};
 
 /// The rule crate whose canonical file set is the witness.
 const RULES_CRATE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../kaimeter-rules");
+
+/// The files the Appendix B evaluation reads.
+const READ_PATHS: [&str; 2] = ["rules.json", "parameters/gwp.json"];
 
 /// The published Appendix B vector.
 const VECTOR: &str = include_str!(concat!(
@@ -76,40 +82,58 @@ fn invocation_text() -> String {
     .to_string()
 }
 
-/// Builds the executor environment for one witness.
-fn witness_env(
-    files: &[(String, Vec<u8>)],
-    invocation: &str,
-    claimed: &[u8],
-) -> ExecutorEnv<'static> {
-    let file_count = files.len() as u32;
-    let mut builder = ExecutorEnv::builder();
-    builder.write(&file_count).unwrap();
-    for (path, content) in files {
-        builder.write(path).unwrap();
-        builder.write(content).unwrap();
-    }
-    builder.write(&invocation.to_string()).unwrap();
-    builder.write(&claimed.to_vec()).unwrap();
-    builder.build().unwrap()
-}
-
-#[test]
-fn aluminium_appendix_b_journal_matches_natively() {
+/// The pinned root of the full file set and the openings the evaluation reads.
+fn setup() -> (BundleHash, Vec<Opening>) {
     let files = canonical_files(Path::new(RULES_CRATE));
     let borrowed: Vec<BundleFile<'_>> = files
         .iter()
         .map(|(path, content)| BundleFile { path, content })
         .collect();
-    let hash = bundle_hash(&borrowed).unwrap();
-    let bundle = RuleBundle::from_files(&borrowed).unwrap();
+    let root = bundle_hash(&borrowed).unwrap();
+    let openings = READ_PATHS
+        .iter()
+        .map(|path| open_file(&borrowed, path).unwrap())
+        .collect();
+    (root, openings)
+}
+
+/// Builds the executor environment for one witness.
+fn witness_env(root: BundleHash, openings: &[Opening], invocation: &str) -> ExecutorEnv<'static> {
+    let mut builder = ExecutorEnv::builder();
+    builder.write(root.as_bytes()).unwrap();
+    builder.write(&(openings.len() as u32)).unwrap();
+    for opening in openings {
+        builder.write(&opening.path).unwrap();
+        builder.write(&opening.content).unwrap();
+        builder.write(&opening.index).unwrap();
+        builder.write(&opening.size).unwrap();
+        builder.write(&(opening.proof.len() as u32)).unwrap();
+        for sibling in &opening.proof {
+            builder.write(sibling.as_bytes()).unwrap();
+        }
+    }
+    builder.write(&invocation.to_string()).unwrap();
+    builder.build().unwrap()
+}
+
+#[test]
+fn aluminium_appendix_b_journal_matches_natively() {
+    let (root, openings) = setup();
     let invocation_text = invocation_text();
+    let borrowed: Vec<BundleFile<'_>> = openings
+        .iter()
+        .map(|opening| BundleFile {
+            path: &opening.path,
+            content: &opening.content,
+        })
+        .collect();
+    let bundle = RuleBundle::from_files(&borrowed).unwrap();
     let invocation = bundle.parse_invocation(&invocation_text).unwrap();
     let outcome = bundle.evaluate(&invocation).unwrap();
     assert_eq!(outcome.output.to_string(), "1.835038");
-    let expected = outcome.journal(hash, invocation.context).canonical_bytes();
+    let expected = outcome.journal(root, invocation.context).canonical_bytes();
 
-    let env = witness_env(&files, &invocation_text, hash.as_bytes());
+    let env = witness_env(root, &openings, &invocation_text);
     let session = default_executor().execute(env, KAIMETER_GUEST_ELF).unwrap();
     let committed = session.journal.bytes;
     assert_eq!(committed, expected);
@@ -117,7 +141,7 @@ fn aluminium_appendix_b_journal_matches_natively() {
     let hash_offset = JOURNAL_PREFIX.len();
     assert_eq!(
         &committed[hash_offset..hash_offset + 32],
-        hash.as_bytes().as_slice()
+        root.as_bytes().as_slice()
     );
     let mut scaled = [0_u8; 16];
     scaled.copy_from_slice(&committed[hash_offset + 32..hash_offset + 48]);
@@ -135,14 +159,9 @@ fn aluminium_appendix_b_journal_matches_natively() {
 #[test]
 #[ignore = "measurement runs with the release metadata, not on pull requests"]
 fn measures_the_appendix_b_execution() {
-    let files = canonical_files(Path::new(RULES_CRATE));
-    let borrowed: Vec<BundleFile<'_>> = files
-        .iter()
-        .map(|(path, content)| BundleFile { path, content })
-        .collect();
-    let hash = bundle_hash(&borrowed).unwrap();
+    let (root, openings) = setup();
     let invocation_text = invocation_text();
-    let env = witness_env(&files, &invocation_text, hash.as_bytes());
+    let env = witness_env(root, &openings, &invocation_text);
 
     let session = default_executor().execute(env, KAIMETER_GUEST_ELF).unwrap();
     let cycles: u32 = session.segments.iter().map(|segment| segment.cycles).sum();
@@ -160,14 +179,9 @@ fn measures_the_appendix_b_execution() {
 #[test]
 #[ignore = "proving runs with the release metadata, not on pull requests"]
 fn proves_the_appendix_b_witness() {
-    let files = canonical_files(Path::new(RULES_CRATE));
-    let borrowed: Vec<BundleFile<'_>> = files
-        .iter()
-        .map(|(path, content)| BundleFile { path, content })
-        .collect();
-    let hash = bundle_hash(&borrowed).unwrap();
+    let (root, openings) = setup();
     let invocation_text = invocation_text();
-    let env = witness_env(&files, &invocation_text, hash.as_bytes());
+    let env = witness_env(root, &openings, &invocation_text);
 
     let started = std::time::Instant::now();
     let info = default_prover().prove(env, KAIMETER_GUEST_ELF).unwrap();

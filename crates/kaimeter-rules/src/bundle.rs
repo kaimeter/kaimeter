@@ -1,14 +1,14 @@
 //! Canonical bundle metadata and hashing.
 //!
-//! The canonical serialisation and the SHA-256 identity live in
+//! The canonical Merkle commitment and the SHA-256 identity live in
 //! `kaimeter-interpreter`, once, so that the pinned native identity and the
-//! hash recomputed inside the zero-knowledge guest cannot drift (whitepaper
+//! root recomputed inside the zero-knowledge guest cannot drift (whitepaper
 //! §5.4; interpreter contract §4). This module re-exports that construction
 //! and adds this crate's embedded `bundle.json`.
 
 pub use kaimeter_interpreter::bundle::{
-    BundleError, BundleFile, BundleHash, BundleMetadata, ChangelogEntry, bundle_hash,
-    canonical_bytes,
+    BUNDLE_PREFIX, BundleError, BundleFile, BundleHash, BundleMetadata, ChangelogEntry, Opening,
+    bundle_hash, open_file, verify_opening,
 };
 
 /// The embedded `bundle.json` of this crate.
@@ -67,9 +67,11 @@ mod tests {
             path: "a.txt",
             content: b"x\n",
         }];
-        let canonical = canonical_bytes(&files).unwrap();
-        assert!(canonical.starts_with(b"kaimeter-bundle-v1\n"));
-        assert_eq!(bundle_hash(&files).unwrap().to_hex().len(), 64);
+        assert!(BUNDLE_PREFIX.starts_with(b"kaimeter-bundle-v2"));
+        let root = bundle_hash(&files).unwrap();
+        assert_eq!(root.to_hex().len(), 64);
+        let opening = open_file(&files, "a.txt").unwrap();
+        assert_eq!(verify_opening(root, &opening), Ok(()));
         assert!(matches!(
             BundleMetadata::from_json("{"),
             Err(BundleError::Metadata { .. })

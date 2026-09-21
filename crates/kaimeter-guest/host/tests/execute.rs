@@ -1,11 +1,11 @@
-//! Guest pipeline checks for the in-circuit bundle-hash verification.
+//! Guest pipeline checks for the in-circuit opening verification.
 //!
-//! The guest must accept a witness only when the claimed hash equals the
-//! `h_B` recomputed from the file set, and commit exactly the journal the
-//! interpreter computes natively for the same witness.
+//! The guest must accept a witness only when the opening reaches the claimed
+//! root, and commit exactly the journal the interpreter computes natively for
+//! the same witness.
 
 use kaimeter_guest_host::KAIMETER_GUEST_ELF;
-use kaimeter_interpreter::bundle::BundleFile;
+use kaimeter_interpreter::bundle::{bundle_hash, open_file, BundleFile, BundleHash, Opening};
 use kaimeter_interpreter::rule::RuleBundle;
 use risc0_zkvm::{default_executor, ExecutorEnv};
 
@@ -45,25 +45,33 @@ fn bundle() -> RuleBundle<'static> {
     .unwrap()
 }
 
-/// Executes the guest with the given claimed hash and returns its journal.
-fn execute(claimed: Vec<u8>) -> Result<Vec<u8>, String> {
-    let file_count: u32 = 1;
-    let path = String::from("rules.json");
-    let content = RULES.to_vec();
+/// The pinned root and the opening of the only file.
+fn opening() -> (BundleHash, Opening) {
+    let files = [BundleFile {
+        path: "rules.json",
+        content: RULES,
+    }];
+    let root = bundle_hash(&files).unwrap();
+    let opening = open_file(&files, "rules.json").unwrap();
+    (root, opening)
+}
+
+/// Executes the guest with the given root and opening, returning its journal.
+fn execute(root: BundleHash, opening: &Opening) -> Result<Vec<u8>, String> {
     let invocation = String::from(INVOCATION);
-    let env = ExecutorEnv::builder()
-        .write(&file_count)
-        .unwrap()
-        .write(&path)
-        .unwrap()
-        .write(&content)
-        .unwrap()
-        .write(&invocation)
-        .unwrap()
-        .write(&claimed)
-        .unwrap()
-        .build()
-        .unwrap();
+    let mut builder = ExecutorEnv::builder();
+    builder.write(root.as_bytes()).unwrap();
+    builder.write(&1_u32).unwrap();
+    builder.write(&opening.path).unwrap();
+    builder.write(&opening.content).unwrap();
+    builder.write(&opening.index).unwrap();
+    builder.write(&opening.size).unwrap();
+    builder.write(&(opening.proof.len() as u32)).unwrap();
+    for sibling in &opening.proof {
+        builder.write(sibling.as_bytes()).unwrap();
+    }
+    builder.write(&invocation).unwrap();
+    let env = builder.build().unwrap();
     match default_executor().execute(env, KAIMETER_GUEST_ELF) {
         Ok(session) => Ok(session.journal.bytes),
         Err(error) => Err(error.to_string()),
@@ -71,26 +79,28 @@ fn execute(claimed: Vec<u8>) -> Result<Vec<u8>, String> {
 }
 
 #[test]
-fn guest_verifies_the_bundle_hash_and_commits_the_journal() {
+fn guest_verifies_the_opening_and_commits_the_journal() {
+    let (root, opening) = opening();
     let bundle = bundle();
-    let hash = bundle.bundle_hash().unwrap();
     let invocation = bundle.parse_invocation(INVOCATION).unwrap();
     let outcome = bundle.evaluate(&invocation).unwrap();
     let expected = outcome
-        .journal(hash, invocation.context.clone())
+        .journal(root, invocation.context.clone())
         .canonical_bytes();
     assert_eq!(outcome.output.to_string(), "42.000000");
 
-    let committed = execute(hash.as_bytes().to_vec()).unwrap();
+    let committed = execute(root, &opening).unwrap();
     assert_eq!(committed, expected);
 }
 
 #[test]
-fn guest_rejects_a_bundle_hash_mismatch() {
-    let mut claimed = bundle().bundle_hash().unwrap().as_bytes().to_vec();
+fn guest_rejects_a_root_mismatch() {
+    let (root, opening) = opening();
+    let mut claimed = *root.as_bytes();
     claimed[0] ^= 0xff;
+    let claimed = BundleHash::from_bytes(claimed);
 
-    match execute(claimed) {
+    match execute(claimed, &opening) {
         Ok(committed) => assert!(
             committed.is_empty(),
             "an aborted guest must not commit a journal"

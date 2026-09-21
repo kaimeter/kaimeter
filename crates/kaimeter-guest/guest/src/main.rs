@@ -1,42 +1,56 @@
 //! RISC Zero guest: evaluate a rule bundle and commit its public journal.
 //!
-//! The witness is the bundle's canonical file set, one invocation record and
-//! the claimed bundle hash. The guest rebuilds the canonical byte stream of
-//! the accepted set, recomputes `h_B` in circuit and requires it to equal the
-//! claimed value before any rule is evaluated; only then does the fixed
-//! interpreter run the named rule and the guest commit the journal of
-//! interpreter contract §7. Any malformed witness or evaluation error aborts
-//! the guest and no proof is produced.
+//! The witness carries the pinned bundle root, one inclusion proof per file
+//! the evaluation reads, and the invocation record. The guest verifies every
+//! opening against the root before evaluating, so no rule or parameter byte
+//! enters the computation unauthenticated, and only the opened files are
+//! read or hashed in circuit (interpreter contract §4, §7). A malformed
+//! witness or evaluation error aborts the guest and no proof is produced.
 
-use kaimeter_interpreter::bundle::BundleFile;
+use kaimeter_interpreter::bundle::{BundleFile, BundleHash, Opening, verify_opening};
 use kaimeter_interpreter::rule::RuleBundle;
 use risc0_zkvm::guest::env;
 
 fn main() {
-    let file_count: u32 = env::read();
-    let mut files = Vec::with_capacity(file_count as usize);
-    for _ in 0..file_count {
+    let root: [u8; 32] = env::read();
+    let root = BundleHash::from_bytes(root);
+
+    let opening_count: u32 = env::read();
+    let mut openings = Vec::with_capacity(opening_count as usize);
+    for _ in 0..opening_count {
         let path: String = env::read();
         let content: Vec<u8> = env::read();
-        files.push((path, content));
+        let index: u64 = env::read();
+        let size: u64 = env::read();
+        let proof_len: u32 = env::read();
+        let mut proof = Vec::with_capacity(proof_len as usize);
+        for _ in 0..proof_len {
+            let sibling: [u8; 32] = env::read();
+            proof.push(BundleHash::from_bytes(sibling));
+        }
+        let opening = Opening {
+            path,
+            content,
+            index,
+            size,
+            proof,
+        };
+        verify_opening(root, &opening).unwrap();
+        openings.push(opening);
     }
-    let invocation: String = env::read();
-    let claimed: Vec<u8> = env::read();
 
-    let files: Vec<BundleFile<'_>> = files
+    let invocation: String = env::read();
+
+    let files: Vec<BundleFile<'_>> = openings
         .iter()
-        .map(|(path, content)| BundleFile { path, content })
+        .map(|opening| BundleFile {
+            path: &opening.path,
+            content: &opening.content,
+        })
         .collect();
     let bundle = RuleBundle::from_files(&files).unwrap();
-    let computed = bundle.bundle_hash().unwrap();
-    assert_eq!(
-        computed.as_bytes().as_slice(),
-        claimed.as_slice(),
-        "bundle hash mismatch"
-    );
-
     let invocation = bundle.parse_invocation(&invocation).unwrap();
     let outcome = bundle.evaluate(&invocation).unwrap();
-    let journal = outcome.journal(computed, invocation.context);
+    let journal = outcome.journal(root, invocation.context);
     env::commit_slice(&journal.canonical_bytes());
 }

@@ -95,31 +95,36 @@ generating one from the other would make that test vacuous. The file is
 serialised in a fixed form (UTF-8, LF, schema key order) so review diffs are
 meaningful; the hashed bytes are exactly the committed bytes.
 
-## 4. In-circuit bundle hash
+## 4. In-circuit bundle commitment
 
-- The identity construction is unchanged from v0.1 — `kaimeter-bundle-v1`:
-  prefix, path-sorted entries, length-prefixed path and content, LF-normalised
-  — and the digest is SHA-256.
-- The guest receives the canonical file set (path, bytes) as private witness,
-  rebuilds the stream, hashes it and requires the digest to equal the `h_B` it
-  commits; a set that differs from the accepted bundle changes the hash and
-  fails. Exclusion patterns are not re-applied in circuit: the hash pins the
-  exact evaluated set.
+- The identity is `kaimeter-bundle-v2`: a SHA-256 Merkle tree over the same
+  semantic file set, one leaf per file, with domain-separated leaf and node
+  tags, path-sorted leaves and an RFC 6962-style split that promotes an odd
+  trailing node instead of duplicating it. The root is `h_B`, unchanged in
+  meaning: it commits the exact evaluated file set, LF-normalised, with
+  excluded paths absent.
+- The guest receives the pinned root and one inclusion proof per file the
+  evaluation reads, verifies every opening against the root, and only then
+  evaluates. No rule or parameter byte enters the computation
+  unauthenticated, and in-circuit work scales with the bytes actually read,
+  not with the bundle size. The linear construction measured 188,622,280
+  cycles for Appendix B, most of it hashing the whole crate; the openings
+  construction exists to remove that cost.
 - The construction lives once, in `kaimeter-interpreter`; `kaimeter-rules`
-  re-exports it so the pinned native identity and the in-circuit recomputation
-  cannot drift.
-- SHA-256 is expected to be practical because RISC Zero accelerates it; unit
-  9 records the measured cycles. If hashing still dominates proving time,
-  §5.4's fallback applies: a proof-friendly hash over the same canonical
-  bytes, documented and conformance-tested, released as a new bundle version,
-  never an in-place change.
+  re-exports it so the pinned native identity and the in-circuit verification
+  cannot drift. `open_file` and `verify_opening` are conformance-tested
+  against an independently computed root vector and exhaustively for small
+  trees.
+- SHA-256 remains the commitment. A proof-friendly hash over the same leaves
+  stays available as a fallback, released as a new bundle version, never an
+  in-place change.
 
 ## 5. Crate layout and identities
 
 ```text
 crates/kaimeter-interpreter   no_std + alloc: fixed-point arithmetic,
-                              canonical serialisation + SHA-256, rule schema,
-                              evaluator F
+                              canonical Merkle commitment + SHA-256, rule
+                              schema, evaluator F
 crates/kaimeter-rules         plain evaluator, parameter tables, bundle
                               metadata and the bundle-hash binary; depends on
                               kaimeter-interpreter
@@ -161,13 +166,13 @@ recorded with the v0.2 release metadata.
 - Public (journal): `h_B`, `y` (the scaled SEE) and the context — sector,
   route, CN code, reporting period. The byte layout is fixed by the
   interpreter schema.
-- Private witness: the bundle file set and the invocation record.
-- The claimed `h_B` travels with the witness; the guest commits the recomputed
-  value and requires equality, and the verifier checks the journal against the
-  `h_B` it accepts.
+- Private witness: the pinned root, one inclusion proof per file the
+  evaluation reads, and the invocation record.
+- The guest verifies every opening against the claimed `h_B` before
+  evaluating; the verifier checks the journal against the `h_B` it accepts.
 - No attestations, installation identifiers or upstream proof hashes are
-  handled in v0.2; the relation proved is `h_B = H(canon(B)) ∧ F(B, w) = y`
-  over the fields above.
+  handled in v0.2; the relation proved is
+  `h_B = root(B) ∧ F(opened(B), w) = y` over the fields above.
 
 ## 8. Consequences and risks
 
@@ -177,8 +182,9 @@ recorded with the v0.2 release metadata.
 - Interpreter upgrades, including RISC Zero toolchain bumps, move the image
   ID; they are explicit units that regenerate the pinned constant, never
   incidental changes.
-- The witness carries every semantic file of the crate, source included, so
-  hashing cost scales with the source tree; units 9 and 10 measure it, and
-  §4's fallback is available.
+- The full file set stays committed, source included, but the witness carries
+  only the openings the evaluation reads, so proving cost no longer scales
+  with the source tree; the linear construction's measurement motivated this
+  and §4's hash fallback remains available.
 - Anything touching the guest is unavailable natively on Windows; WSL2 or CI
   is the local workflow.

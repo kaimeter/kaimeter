@@ -18,7 +18,7 @@
     },
     {
       "version": "2026.3.0",
-      "note": "v0.2: canonical hashing re-exported from kaimeter-interpreter; the primary-route slope and overvoltage rules, the secondary route and complex-good aggregation are carried as rules.json data."
+      "note": "v0.2: canonical hashing re-exported from kaimeter-interpreter; the primary-route slope and overvoltage rules, the secondary route and complex-good aggregation are carried as rules.json data; the bundle is committed as a SHA-256 Merkle tree whose per-file openings the guest verifies in circuit."
     }
   ],
   "excludedPaths": ["tests/**", "tools/**", "src/bin/**"]

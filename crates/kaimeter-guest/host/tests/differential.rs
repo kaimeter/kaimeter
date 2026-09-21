@@ -6,7 +6,7 @@
 //! disagreement fails with the offending invocation and case name printed.
 
 use kaimeter_guest_host::KAIMETER_GUEST_ELF;
-use kaimeter_interpreter::bundle::{bundle_hash, BundleFile};
+use kaimeter_interpreter::bundle::{bundle_hash, open_file, BundleFile, BundleHash, Opening};
 use kaimeter_interpreter::rule::RuleBundle;
 use kaimeter_rules::common::precursors::{see_complex, PrecursorOrigin, PrecursorSupply};
 use kaimeter_rules::fixed::{Fixed, SCALE};
@@ -95,34 +95,36 @@ fn bundle_files() -> [BundleFile<'static>; 2] {
 }
 
 /// Evaluates the interpreter natively and returns its output and journal.
-fn native_journal(invocation_text: &str) -> (String, Vec<u8>) {
+fn native_journal(invocation_text: &str, root: BundleHash) -> (String, Vec<u8>) {
     let files = bundle_files();
     let bundle = RuleBundle::from_files(&files).unwrap();
-    let hash = bundle.bundle_hash().unwrap();
+    assert_eq!(bundle.bundle_hash().unwrap(), root);
     let invocation = bundle.parse_invocation(invocation_text).unwrap();
     let outcome = bundle.evaluate(&invocation).unwrap();
     let output = outcome.output.to_string();
     (
         output,
-        outcome.journal(hash, invocation.context).canonical_bytes(),
+        outcome.journal(root, invocation.context).canonical_bytes(),
     )
 }
 
 /// Executes the guest and returns its committed journal.
-fn guest_journal(invocation_text: &str) -> Vec<u8> {
-    let files = bundle_files();
-    let hash = bundle_hash(&files).unwrap();
-    let file_count = files.len() as u32;
-    let claimed = hash.as_bytes().to_vec();
+fn guest_journal(invocation_text: &str, root: BundleHash, openings: &[Opening]) -> Vec<u8> {
     let invocation = invocation_text.to_string();
     let mut builder = ExecutorEnv::builder();
-    builder.write(&file_count).unwrap();
-    for file in &files {
-        builder.write(&file.path.to_string()).unwrap();
-        builder.write(&file.content.to_vec()).unwrap();
+    builder.write(root.as_bytes()).unwrap();
+    builder.write(&(openings.len() as u32)).unwrap();
+    for opening in openings {
+        builder.write(&opening.path).unwrap();
+        builder.write(&opening.content).unwrap();
+        builder.write(&opening.index).unwrap();
+        builder.write(&opening.size).unwrap();
+        builder.write(&(opening.proof.len() as u32)).unwrap();
+        for sibling in &opening.proof {
+            builder.write(sibling.as_bytes()).unwrap();
+        }
     }
     builder.write(&invocation).unwrap();
-    builder.write(&claimed).unwrap();
     let env = builder.build().unwrap();
     default_executor()
         .execute(env, KAIMETER_GUEST_ELF)
@@ -134,9 +136,15 @@ fn guest_journal(invocation_text: &str) -> Vec<u8> {
 /// Checks one invocation in all three executions.
 fn assert_agreement(case: &str, invocation: serde_json::Value, typed: String) {
     let text = invocation.to_string();
-    let (native, expected) = native_journal(&text);
+    let files = bundle_files();
+    let root = bundle_hash(&files).unwrap();
+    let openings = [
+        open_file(&files, "rules.json").unwrap(),
+        open_file(&files, "parameters/gwp.json").unwrap(),
+    ];
+    let (native, expected) = native_journal(&text, root);
     assert_eq!(typed, native, "{case}: typed and interpreter disagree");
-    let committed = guest_journal(&text);
+    let committed = guest_journal(&text, root, &openings);
     assert_eq!(
         committed, expected,
         "{case}: guest and interpreter disagree"
