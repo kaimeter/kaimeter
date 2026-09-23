@@ -10,9 +10,11 @@ unsound = "all"
 ignore = []
 
 [bans]
-# Duplicates are reported for review; wildcard version requirements are banned.
+# Duplicates are reported for review; wildcard version requirements are banned,
+# except for path dependencies of private workspace crates.
 multiple-versions = "warn"
 wildcards = "deny"
+allow-wildcard-paths = true
 
 [licenses]
 # Permissive set only: the reference implementation is Apache-2.0 and must
