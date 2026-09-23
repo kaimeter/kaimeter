@@ -1,6 +1,6 @@
 {
   "bundle": "cbam",
-  "version": "2026.2.0",
+  "version": "2026.3.0",
   "jurisdiction": "EU",
   "sectors": ["aluminium"],
   "appliesFrom": "2026-01-01",
@@ -10,11 +10,15 @@
     "Implementing Regulation (EU) 2025/2547",
     "Implementing Regulation (EU) 2025/2621 as corrected by Implementing Regulation (EU) 2026/1740"
   ],
-  "supersedes": "2026.1.x",
+  "supersedes": "2026.2.0",
   "changelog": [
     {
       "version": "2026.2.0",
       "note": "v0.1 aluminium bundle: corrected default values of IR (EU) 2026/1740; primary route with slope-method PFCs."
+    },
+    {
+      "version": "2026.3.0",
+      "note": "v0.2: canonical hashing re-exported from kaimeter-interpreter; the primary-route slope and overvoltage rules, the secondary route and complex-good aggregation are carried as rules.json data; the bundle is committed as a SHA-256 Merkle tree whose per-file openings the guest verifies in circuit."
     }
   ],
   "excludedPaths": ["tests/**", "tools/**", "src/bin/**"]

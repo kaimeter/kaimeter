@@ -1,0 +1,6 @@
+# The RISC Zero toolchain the guest is built and proved with. The zkVM's own
+# workspace pins the same release (risc0/risc0 v3.0.6); bump both together.
+[toolchain]
+channel = "1.97"
+components = ["rustfmt", "rust-src"]
+profile = "minimal"

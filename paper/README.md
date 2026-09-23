@@ -1,7 +1,7 @@
 # Kaimeter Working Paper 2026-01
 
 *Prove, Don't Disclose: Verifiable CBAM Compliance Across Industrial Supply
-Chains Using Rules as Code and Zero-Knowledge Proofs* — version 1.1, preprint.
+Chains Using Rules as Code and Zero-Knowledge Proofs* - version 1.2, preprint.
 
 - DOI: <https://doi.org/10.5281/zenodo.22740284>
 - Repository: <https://github.com/kaimeter/kaimeter>

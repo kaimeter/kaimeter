@@ -1,4 +1,4 @@
-//! Precursor attribution and Art. 14 averaging.
+//! Precursor attribution, Art. 14 averaging and complex-good aggregation.
 //!
 //! Where a precursor under one CN code arrives from several installations or
 //! production periods, its embedded emissions are the mass-weighted average
@@ -6,9 +6,11 @@
 //! single installation, period or subset was used for a specific production
 //! process, that subset is passed and its values are used directly
 //! (Art. 14(3)). Precursors produced in the EU or in excluded countries and
-//! territories are zero-rated, but their mass still counts.
+//! territories are zero-rated, but their mass still counts. A complex good's
+//! specific embedded emissions add the emissions of every consumed precursor
+//! to the producer's own direct emissions.
 //!
-//! @legal  IR (EU) 2025/2547, Articles 13-14
+//! @legal  IR (EU) 2025/2547, Articles 13-14; Regulation (EU) 2023/956, Annex IV
 //! @source <https://taxation-customs.ec.europa.eu/document/download/29b9eec7-1a4b-4eb6-ab85-96a0c9e35fd0_en?filename=Guidance%20No.%203%20-%20CBAM%20methods%20for%20the%20calculation%20of%20emissions%20embedded%20in%20goods.pdf>
 //! @since  bundle 2026.2.0
 
@@ -58,6 +60,29 @@ pub fn weighted_average(supplies: &[PrecursorSupply]) -> Result<Fixed, RuleError
         weighted = weighted.try_add(contribution(supply)?)?;
     }
     weighted.try_div(total)
+}
+
+/// Computes the specific embedded emissions of a complex good.
+///
+/// The attributed emissions are the producer's own direct emissions plus the
+/// embedded emissions of every consumed precursor supply; supplies of EU or
+/// excluded origin add zero. The sum is divided by the good's production, so
+/// precursor mass enters only through the emissions it carries.
+///
+/// # Errors
+///
+/// Returns [`RuleError::DivisionByZero`] for zero production and
+/// [`RuleError::Overflow`] when the arithmetic leaves the scaled range.
+pub fn see_complex(
+    direct_tco2e_t: Fixed,
+    production_t: Fixed,
+    supplies: &[PrecursorSupply],
+) -> Result<Fixed, RuleError> {
+    let mut attributed = direct_tco2e_t;
+    for supply in supplies {
+        attributed = attributed.try_add(contribution(supply)?)?;
+    }
+    attributed.try_div(production_t)
 }
 
 /// Returns the weighted emissions of one supply.
@@ -137,5 +162,53 @@ mod tests {
             origin: PrecursorOrigin::ThirdCountry,
         }];
         assert_eq!(weighted_average(&supplies), Err(RuleError::Overflow));
+    }
+
+    #[test]
+    fn aggregates_direct_and_precursor_emissions() {
+        let supplies = [third("1.835038", "600"), third("1.910", "430")];
+        assert_eq!(
+            see_complex(fixed("120"), fixed("1000"), &supplies).unwrap(),
+            fixed("2.042323")
+        );
+    }
+
+    #[test]
+    fn keeps_eu_supplies_at_zero_without_a_denominator_effect() {
+        let supplies = [third("2.0", "100"), zero_rated("9.9", "100")];
+        assert_eq!(
+            see_complex(Fixed::ZERO, fixed("200"), &supplies).unwrap(),
+            fixed("1.0")
+        );
+    }
+
+    #[test]
+    fn treats_a_good_without_precursors_as_direct_only() {
+        assert_eq!(
+            see_complex(fixed("3"), fixed("2"), &[]).unwrap(),
+            fixed("1.5")
+        );
+    }
+
+    #[test]
+    fn reports_zero_production_for_a_complex_good() {
+        let supplies = [third("1.0", "100")];
+        assert_eq!(
+            see_complex(fixed("0"), Fixed::ZERO, &supplies),
+            Err(RuleError::DivisionByZero)
+        );
+    }
+
+    #[test]
+    fn reports_overflow_for_a_complex_good() {
+        let supplies = [PrecursorSupply {
+            see: Fixed::from_scaled(i128::MAX),
+            quantity_t: Fixed::from_scaled(2_000_000),
+            origin: PrecursorOrigin::ThirdCountry,
+        }];
+        assert_eq!(
+            see_complex(Fixed::ZERO, Fixed::ONE, &supplies),
+            Err(RuleError::Overflow)
+        );
     }
 }

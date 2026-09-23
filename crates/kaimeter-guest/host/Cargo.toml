@@ -1,0 +1,19 @@
+[package]
+name = "kaimeter-guest-host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+risc0-build = { version = "=3.0.6" }
+
+[dependencies]
+kaimeter-interpreter = { path = "../../kaimeter-interpreter" }
+risc0-zkvm = { version = "=3.0.6" }
+
+[dev-dependencies]
+kaimeter-rules = { path = "../../kaimeter-rules" }
+serde_json = "1.0"
+
+[package.metadata.risc0]
+methods = ["../guest"]
