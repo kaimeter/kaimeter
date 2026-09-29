@@ -1,5 +1,6 @@
 [workspace]
 members = ["crates/*", "xtask"]
+exclude = ["crates/kaimeter-guest"]
 resolver = "3"
 
 [workspace.package]

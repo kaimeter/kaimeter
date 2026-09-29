@@ -1,0 +1,28 @@
+{
+  "bundle": "cbam",
+  "sector": "aluminium",
+  "route": "complex",
+  "cn_code": "7604 10 90",
+  "period": "2026",
+  "method": "art14_two_supplier_precursors",
+  "supplies": [
+    {
+      "see_tco2e_per_t": "1.835038",
+      "quantity_t": "600",
+      "origin": "third_country"
+    },
+    {
+      "see_tco2e_per_t": "1.910000",
+      "quantity_t": "430",
+      "origin": "third_country"
+    }
+  ],
+  "inputs": {
+    "production_t": "1000",
+    "direct_tco2e_t": "120"
+  },
+  "expected": {
+    "weighted_average_tco2e_per_t": "1.866333",
+    "see_tco2e_per_t": "2.042323"
+  }
+}

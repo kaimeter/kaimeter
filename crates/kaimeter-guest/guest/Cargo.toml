@@ -1,0 +1,11 @@
+[package]
+name = "kaimeter-guest"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+kaimeter-interpreter = { path = "../../kaimeter-interpreter" }
+risc0-zkvm = { version = "=3.0.6", default-features = false, features = ["std"] }

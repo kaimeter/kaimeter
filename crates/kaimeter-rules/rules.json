@@ -1,0 +1,319 @@
+{
+  "schema": "kaimeter-rules-v1",
+  "types": {
+    "supply": {
+      "fields": {
+        "origin": "text",
+        "quantity_t": "scalar",
+        "see_tco2e_per_t": "scalar"
+      }
+    }
+  },
+  "rules": {
+    "aluminium.primary.slope": {
+      "legal": "IR (EU) 2025/2547, Annex II, sections B.7.1 and B.7.3 (Equations 21-23 and 26)",
+      "source": "http://data.europa.eu/eli/reg_impl/2025/2547/oj",
+      "since": "2026.2.0",
+      "inputs": {
+        "production_t": {"type": "scalar"},
+        "direct_co2_t": {"type": "scalar"},
+        "anode_effect_minutes_per_cell_day": {"type": "scalar"},
+        "slope_emission_factor_cf4": {"type": "scalar"},
+        "weight_fraction_c2f6_cf4": {"type": "scalar"}
+      },
+      "outputs": {
+        "cf4_t": {"op": "div", "args": [
+          {"op": "mul", "args": [
+            {"op": "mul", "args": [
+              {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+              {"op": "input", "name": "slope_emission_factor_cf4"}
+            ]},
+            {"op": "input", "name": "production_t"}
+          ]},
+          {"op": "const", "scalar": "1000"}
+        ]},
+        "c2f6_t": {"op": "mul", "args": [
+          {"op": "div", "args": [
+            {"op": "mul", "args": [
+              {"op": "mul", "args": [
+                {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+                {"op": "input", "name": "slope_emission_factor_cf4"}
+              ]},
+              {"op": "input", "name": "production_t"}
+            ]},
+            {"op": "const", "scalar": "1000"}
+          ]},
+          {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+        ]},
+        "pfc_tco2e": {"op": "add", "args": [
+          {"op": "mul", "args": [
+            {"op": "table", "table": "gwp", "column": "gwp100",
+              "match": [{"column": "substance", "equals": {"op": "const", "text": "CF4"}}]},
+            {"op": "div", "args": [
+              {"op": "mul", "args": [
+                {"op": "mul", "args": [
+                  {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+                  {"op": "input", "name": "slope_emission_factor_cf4"}
+                ]},
+                {"op": "input", "name": "production_t"}
+              ]},
+              {"op": "const", "scalar": "1000"}
+            ]}
+          ]},
+          {"op": "mul", "args": [
+            {"op": "table", "table": "gwp", "column": "gwp100",
+              "match": [{"column": "substance", "equals": {"op": "const", "text": "C2F6"}}]},
+            {"op": "mul", "args": [
+              {"op": "div", "args": [
+                {"op": "mul", "args": [
+                  {"op": "mul", "args": [
+                    {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+                    {"op": "input", "name": "slope_emission_factor_cf4"}
+                  ]},
+                  {"op": "input", "name": "production_t"}
+                ]},
+                {"op": "const", "scalar": "1000"}
+              ]},
+              {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+            ]}
+          ]}
+        ]},
+        "see_tco2e_per_t": {"op": "div", "args": [
+          {"op": "add", "args": [
+            {"op": "input", "name": "direct_co2_t"},
+            {"op": "add", "args": [
+              {"op": "mul", "args": [
+                {"op": "table", "table": "gwp", "column": "gwp100",
+                  "match": [{"column": "substance", "equals": {"op": "const", "text": "CF4"}}]},
+                {"op": "div", "args": [
+                  {"op": "mul", "args": [
+                    {"op": "mul", "args": [
+                      {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+                      {"op": "input", "name": "slope_emission_factor_cf4"}
+                    ]},
+                    {"op": "input", "name": "production_t"}
+                  ]},
+                  {"op": "const", "scalar": "1000"}
+                ]}
+              ]},
+              {"op": "mul", "args": [
+                {"op": "table", "table": "gwp", "column": "gwp100",
+                  "match": [{"column": "substance", "equals": {"op": "const", "text": "C2F6"}}]},
+                {"op": "mul", "args": [
+                  {"op": "div", "args": [
+                    {"op": "mul", "args": [
+                      {"op": "mul", "args": [
+                        {"op": "input", "name": "anode_effect_minutes_per_cell_day"},
+                        {"op": "input", "name": "slope_emission_factor_cf4"}
+                      ]},
+                      {"op": "input", "name": "production_t"}
+                    ]},
+                    {"op": "const", "scalar": "1000"}
+                  ]},
+                  {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+                ]}
+              ]}
+            ]}
+          ]},
+          {"op": "input", "name": "production_t"}
+        ]}
+      },
+      "proves": "see_tco2e_per_t"
+    },
+    "aluminium.primary.overvoltage": {
+      "legal": "IR (EU) 2025/2547, Annex II, sections B.7.2 and B.7.3 (Equations 24-26)",
+      "source": "http://data.europa.eu/eli/reg_impl/2025/2547/oj",
+      "since": "2026.3.0",
+      "inputs": {
+        "production_t": {"type": "scalar"},
+        "direct_co2_t": {"type": "scalar"},
+        "anode_effect_overvoltage_mv": {"type": "scalar"},
+        "current_efficiency_percent": {"type": "scalar"},
+        "overvoltage_coefficient_cf4": {"type": "scalar"},
+        "weight_fraction_c2f6_cf4": {"type": "scalar"}
+      },
+      "outputs": {
+        "cf4_t": {"op": "div", "args": [
+          {"op": "mul", "args": [
+            {"op": "mul", "args": [
+              {"op": "input", "name": "overvoltage_coefficient_cf4"},
+              {"op": "div", "args": [
+                {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                {"op": "input", "name": "current_efficiency_percent"}
+              ]}
+            ]},
+            {"op": "input", "name": "production_t"}
+          ]},
+          {"op": "const", "scalar": "1000"}
+        ]},
+        "c2f6_t": {"op": "mul", "args": [
+          {"op": "div", "args": [
+            {"op": "mul", "args": [
+              {"op": "mul", "args": [
+                {"op": "input", "name": "overvoltage_coefficient_cf4"},
+                {"op": "div", "args": [
+                  {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                  {"op": "input", "name": "current_efficiency_percent"}
+                ]}
+              ]},
+              {"op": "input", "name": "production_t"}
+            ]},
+            {"op": "const", "scalar": "1000"}
+          ]},
+          {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+        ]},
+        "pfc_tco2e": {"op": "add", "args": [
+          {"op": "mul", "args": [
+            {"op": "table", "table": "gwp", "column": "gwp100",
+              "match": [{"column": "substance", "equals": {"op": "const", "text": "CF4"}}]},
+            {"op": "div", "args": [
+              {"op": "mul", "args": [
+                {"op": "mul", "args": [
+                  {"op": "input", "name": "overvoltage_coefficient_cf4"},
+                  {"op": "div", "args": [
+                    {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                    {"op": "input", "name": "current_efficiency_percent"}
+                  ]}
+                ]},
+                {"op": "input", "name": "production_t"}
+              ]},
+              {"op": "const", "scalar": "1000"}
+            ]}
+          ]},
+          {"op": "mul", "args": [
+            {"op": "table", "table": "gwp", "column": "gwp100",
+              "match": [{"column": "substance", "equals": {"op": "const", "text": "C2F6"}}]},
+            {"op": "mul", "args": [
+              {"op": "div", "args": [
+                {"op": "mul", "args": [
+                  {"op": "mul", "args": [
+                    {"op": "input", "name": "overvoltage_coefficient_cf4"},
+                    {"op": "div", "args": [
+                      {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                      {"op": "input", "name": "current_efficiency_percent"}
+                    ]}
+                  ]},
+                  {"op": "input", "name": "production_t"}
+                ]},
+                {"op": "const", "scalar": "1000"}
+              ]},
+              {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+            ]}
+          ]}
+        ]},
+        "see_tco2e_per_t": {"op": "div", "args": [
+          {"op": "add", "args": [
+            {"op": "input", "name": "direct_co2_t"},
+            {"op": "add", "args": [
+              {"op": "mul", "args": [
+                {"op": "table", "table": "gwp", "column": "gwp100",
+                  "match": [{"column": "substance", "equals": {"op": "const", "text": "CF4"}}]},
+                {"op": "div", "args": [
+                  {"op": "mul", "args": [
+                    {"op": "mul", "args": [
+                      {"op": "input", "name": "overvoltage_coefficient_cf4"},
+                      {"op": "div", "args": [
+                        {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                        {"op": "input", "name": "current_efficiency_percent"}
+                      ]}
+                    ]},
+                    {"op": "input", "name": "production_t"}
+                  ]},
+                  {"op": "const", "scalar": "1000"}
+                ]}
+              ]},
+              {"op": "mul", "args": [
+                {"op": "table", "table": "gwp", "column": "gwp100",
+                  "match": [{"column": "substance", "equals": {"op": "const", "text": "C2F6"}}]},
+                {"op": "mul", "args": [
+                  {"op": "div", "args": [
+                    {"op": "mul", "args": [
+                      {"op": "mul", "args": [
+                        {"op": "input", "name": "overvoltage_coefficient_cf4"},
+                        {"op": "div", "args": [
+                          {"op": "input", "name": "anode_effect_overvoltage_mv"},
+                          {"op": "input", "name": "current_efficiency_percent"}
+                        ]}
+                      ]},
+                      {"op": "input", "name": "production_t"}
+                    ]},
+                    {"op": "const", "scalar": "1000"}
+                  ]},
+                  {"op": "input", "name": "weight_fraction_c2f6_cf4"}
+                ]}
+              ]}
+            ]}
+          ]},
+          {"op": "input", "name": "production_t"}
+        ]}
+      },
+      "proves": "see_tco2e_per_t"
+    },
+    "aluminium.secondary.see": {
+      "legal": "IR (EU) 2025/2547, Annex I, point 3.17.2.2 (secondary melting); Regulation (EU) 2023/956, Annex IV",
+      "source": "http://data.europa.eu/eli/reg_impl/2025/2547/oj",
+      "since": "2026.3.0",
+      "inputs": {
+        "production_t": {"type": "scalar"},
+        "direct_co2_t": {"type": "scalar"},
+        "supplies": {"type": "list", "of": "supply"}
+      },
+      "outputs": {
+        "see_tco2e_per_t": {"op": "div", "args": [
+          {"op": "add", "args": [
+            {"op": "input", "name": "direct_co2_t"},
+            {"op": "sum",
+              "list": {"op": "input", "name": "supplies"},
+              "of": {"op": "select",
+                "cond": {"op": "eq", "args": [
+                  {"op": "field", "name": "origin"},
+                  {"op": "const", "text": "third_country"}
+                ]},
+                "then": {"op": "mul", "args": [
+                  {"op": "field", "name": "quantity_t"},
+                  {"op": "field", "name": "see_tco2e_per_t"}
+                ]},
+                "else": {"op": "const", "scalar": "0"}
+              }
+            }
+          ]},
+          {"op": "input", "name": "production_t"}
+        ]}
+      },
+      "proves": "see_tco2e_per_t"
+    },
+    "common.complex.see": {
+      "legal": "Regulation (EU) 2023/956, Annex IV; IR (EU) 2025/2547, Articles 13-14",
+      "source": "http://data.europa.eu/eli/reg/2023/956/oj",
+      "since": "2026.3.0",
+      "inputs": {
+        "production_t": {"type": "scalar"},
+        "direct_tco2e_t": {"type": "scalar"},
+        "supplies": {"type": "list", "of": "supply"}
+      },
+      "outputs": {
+        "see_tco2e_per_t": {"op": "div", "args": [
+          {"op": "add", "args": [
+            {"op": "input", "name": "direct_tco2e_t"},
+            {"op": "sum",
+              "list": {"op": "input", "name": "supplies"},
+              "of": {"op": "select",
+                "cond": {"op": "eq", "args": [
+                  {"op": "field", "name": "origin"},
+                  {"op": "const", "text": "third_country"}
+                ]},
+                "then": {"op": "mul", "args": [
+                  {"op": "field", "name": "quantity_t"},
+                  {"op": "field", "name": "see_tco2e_per_t"}
+                ]},
+                "else": {"op": "const", "scalar": "0"}
+              }
+            }
+          ]},
+          {"op": "input", "name": "production_t"}
+        ]}
+      },
+      "proves": "see_tco2e_per_t"
+    }
+  }
+}

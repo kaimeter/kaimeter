@@ -1,0 +1,62 @@
+name: RISC Zero guest
+
+# The guest builds and executes on Linux only; the root workspace gates never
+# need the RISC Zero toolchain (interpreter contract §2).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/kaimeter-guest/**"
+      - "crates/kaimeter-interpreter/**"
+      - "crates/kaimeter-rules/**"
+      - ".github/workflows/guest.yml"
+  pull_request:
+    paths:
+      - "crates/kaimeter-guest/**"
+      - "crates/kaimeter-interpreter/**"
+      - "crates/kaimeter-rules/**"
+      - ".github/workflows/guest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RISC0_RUST_VERSION: 1.97.0
+  RISC0_VERSION: 3.0.6
+
+jobs:
+  guest:
+    name: guest build and differential tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates/kaimeter-guest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.97.0
+        with:
+          components: rustfmt
+      # risc0-build compiles the guest with the rzup-installed toolchain; the
+      # rzup components are pinned to the versions the guest workspace locks.
+      - name: Install the pinned RISC Zero toolchain
+        run: |
+          curl -L https://risczero.com/install -o "$RUNNER_TEMP/rzup-install.sh"
+          bash "$RUNNER_TEMP/rzup-install.sh"
+          export PATH="$HOME/.risc0/bin:$PATH"
+          rzup install rust "$RISC0_RUST_VERSION"
+          rzup install r0vm "$RISC0_VERSION"
+          echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/kaimeter-guest
+      - name: Format
+        run: cargo fmt --all --check
+      # Builds the guest ELF and runs the native/guest differential suite.
+      - name: Build the guest and run the differential tests
+        run: cargo test

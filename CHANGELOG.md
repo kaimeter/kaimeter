@@ -4,6 +4,30 @@ Notable changes to the Kaimeter repository. The working paper is versioned as
 `paper-vX.Y`; the reference implementation follows semantic versions from
 v0.1.
 
+## Unreleased
+
+### Added
+
+- `kaimeter-interpreter` 0.1.0: the fixed rule-bundle interpreter, fixed-point
+  arithmetic and the `kaimeter-bundle-v2` Merkle commitment with per-file
+  openings, shared by the native evaluator and the guest.
+- `rules.json` rule content for the aluminium bundle: the primary slope and
+  overvoltage rules, the secondary route and complex-good aggregation, each
+  with its legal annotation.
+- The overvoltage method (Annex II B.7.2), the secondary melting route
+  (Annex I 3.17.2.2) and the two-supplier precursor vector reproducing §11.
+- `kaimeter-guest`: the RISC Zero guest evaluating the bundle from a witness
+  of Merkle openings, committing the journal, with the pinned toolchain and
+  native/guest differential tests.
+- On-demand AWS proving script (`tools/prove-aws.sh`) for the release
+  measurements.
+- Cross-version verification commitment in the working paper (v1.2 draft).
+
+### Changed
+
+- The bundle identity moves to `kaimeter-bundle-v2`; the pinned identity is
+  `sha256:f82ab85b1df845a194b45ea2677762fb1b8ba5a9898858000abd5ed1fd911139`.
+
 ## v0.1.0 - 2026-09-16
 
 ### Added
