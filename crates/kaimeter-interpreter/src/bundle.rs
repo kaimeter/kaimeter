@@ -308,11 +308,7 @@ fn node_hash(left: &BundleHash, right: &BundleHash) -> BundleHash {
 
 /// Returns the largest power of two strictly below `n`, for `n >= 2`.
 fn split_point(n: usize) -> usize {
-    let mut k = 1 << (usize::BITS - 1 - (n - 1).leading_zeros());
-    if k >= n {
-        k /= 2;
-    }
-    k
+    n.next_power_of_two() >> 1
 }
 
 /// Returns the Merkle tree root of a non-empty slice of leaves.
@@ -430,7 +426,8 @@ fn fold(leaf: BundleHash, index: usize, size: usize, proof: &[BundleHash]) -> Op
 pub fn verify_opening(root: BundleHash, opening: &Opening) -> Result<(), BundleError> {
     let index = usize::try_from(opening.index).map_err(|_| BundleError::InvalidProof)?;
     let size = usize::try_from(opening.size).map_err(|_| BundleError::InvalidProof)?;
-    if size == 0 || index >= size {
+    // A `usize` index cannot be negative, so this also rejects an empty tree.
+    if index >= size {
         return Err(BundleError::InvalidProof);
     }
     let path = canonical_path(&opening.path)?;
@@ -507,6 +504,31 @@ mod tests {
     #[test]
     fn rejects_an_empty_bundle() {
         assert_eq!(bundle_hash(&[]), Err(BundleError::Empty));
+    }
+
+    #[test]
+    fn excludes_paths_by_pattern() {
+        let metadata = BundleMetadata::from_json(
+            r#"{
+                "bundle": "cbam",
+                "version": "2026.3.0",
+                "jurisdiction": "EU",
+                "sectors": ["aluminium"],
+                "appliesFrom": "2026-01-01",
+                "appliesTo": null,
+                "legalBasis": [],
+                "supersedes": null,
+                "changelog": [],
+                "excludedPaths": ["tests/**", "Cargo.toml"]
+            }"#,
+        )
+        .unwrap();
+        assert!(metadata.excludes("tests/vectors/a.json"));
+        assert!(metadata.excludes("Cargo.toml"));
+        assert!(!metadata.excludes("tests"));
+        assert!(!metadata.excludes("testsx/y"));
+        assert!(!metadata.excludes("other/x.json"));
+        assert!(!metadata.excludes("src/lib.rs"));
     }
 
     #[test]
@@ -618,6 +640,37 @@ mod tests {
             content: b"\n\n\nx\n",
         }];
         assert_eq!(bundle_hash(&mixed), bundle_hash(&mixed_lf));
+    }
+
+    // Proofs are built and checked with the same split, so a wrong split still
+    // round-trips. Pin the split itself.
+    #[test]
+    fn splits_at_the_largest_power_of_two_below_the_size() {
+        for (size, expected) in [(2, 1), (3, 2), (4, 2), (5, 4), (9, 8)] {
+            assert_eq!(split_point(size), expected, "{size}");
+        }
+    }
+
+    // A one-leaf root is the leaf, so folding an out-of-range index would still
+    // match. The bounds check has to reject it before folding.
+    #[test]
+    fn openings_reject_an_index_outside_the_tree() {
+        let files = [BundleFile {
+            path: "a.txt",
+            content: b"x\n",
+        }];
+        let root = bundle_hash(&files).unwrap();
+        let mut opening = open_file(&files, "a.txt").unwrap();
+        opening.index = opening.size;
+        assert_eq!(
+            verify_opening(root, &opening),
+            Err(BundleError::InvalidProof)
+        );
+        opening.index = opening.size + 1;
+        assert_eq!(
+            verify_opening(root, &opening),
+            Err(BundleError::InvalidProof)
+        );
     }
 
     #[test]

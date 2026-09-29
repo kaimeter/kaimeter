@@ -136,7 +136,7 @@ impl Fixed {
     /// Returns [`RuleError::Overflow`] for `i128::MIN`, which has no
     /// negation in the scaled range.
     pub fn try_abs(self) -> Result<Self, RuleError> {
-        if self.0 < 0 { self.try_neg() } else { Ok(self) }
+        self.0.checked_abs().map(Self).ok_or(RuleError::Overflow)
     }
 }
 
@@ -145,7 +145,7 @@ fn div_round_half_even(numerator: i128, denominator: i128) -> Result<i128, RuleE
     if denominator == 0 {
         return Err(RuleError::DivisionByZero);
     }
-    let negative = (numerator < 0) != (denominator < 0);
+    let negative = numerator.is_negative() != denominator.is_negative();
     let magnitude = numerator.unsigned_abs();
     let divisor = denominator.unsigned_abs();
     let mut quotient = magnitude / divisor;
@@ -299,6 +299,13 @@ mod tests {
     }
 
     #[test]
+    fn recognises_zero() {
+        assert!(Fixed::ZERO.is_zero());
+        assert!(!Fixed::ONE.is_zero());
+        assert!(!Fixed::from_scaled(-1).is_zero());
+    }
+
+    #[test]
     fn parses_fractional_decimals() {
         assert_eq!(fixed("0.143").scaled(), 143_000);
         assert_eq!(fixed("3.575").scaled(), 3_575_000);
@@ -328,6 +335,10 @@ mod tests {
         assert_eq!(fixed("0.00000150001").scaled(), 2);
         assert_eq!(fixed("0.00000050001").scaled(), 1);
         assert_eq!(fixed("-0.0000005"), Fixed::ZERO);
+        assert_eq!(fixed("0.00000050000"), Fixed::ZERO);
+        assert_eq!(fixed("0.00000060000").scaled(), 1);
+        assert_eq!(fixed("0.00000150000").scaled(), 2);
+        assert_eq!(fixed("0.00000250000").scaled(), 2);
     }
 
     #[test]
@@ -361,6 +372,15 @@ mod tests {
         assert_eq!(fixed("2").try_mul(fixed("0.5")).unwrap(), Fixed::ONE);
         assert_eq!(fixed("1.5").try_mul(fixed("0.000001")).unwrap().scaled(), 2);
         assert_eq!(fixed("2.5").try_mul(fixed("0.000001")).unwrap().scaled(), 2);
+        assert_eq!(fixed("-2").try_mul(fixed("0.5")).unwrap(), fixed("-1"));
+        assert_eq!(
+            fixed("-1.5").try_mul(fixed("0.000001")).unwrap().scaled(),
+            -2
+        );
+        assert_eq!(
+            fixed("-2.5").try_mul(fixed("0.000001")).unwrap().scaled(),
+            -2
+        );
         assert_eq!(
             Fixed::from_scaled(i128::MAX).try_mul(Fixed::from_scaled(2)),
             Err(RuleError::Overflow)
@@ -374,6 +394,10 @@ mod tests {
         assert_eq!(fixed("2").try_div(fixed("3")).unwrap().scaled(), 666_667);
         assert_eq!(fixed("0.000001").try_div(fixed("2")).unwrap(), Fixed::ZERO);
         assert_eq!(fixed("0.000003").try_div(fixed("2")).unwrap().scaled(), 2);
+        assert_eq!(fixed("-1").try_div(fixed("8")).unwrap(), fixed("-0.125"));
+        assert_eq!(fixed("1").try_div(fixed("-8")).unwrap(), fixed("-0.125"));
+        assert_eq!(fixed("-1").try_div(fixed("-8")).unwrap(), fixed("0.125"));
+        assert_eq!(fixed("-0.000003").try_div(fixed("2")).unwrap().scaled(), -2);
         assert_eq!(
             fixed("1").try_div(Fixed::ZERO),
             Err(RuleError::DivisionByZero)

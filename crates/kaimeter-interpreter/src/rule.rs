@@ -1001,6 +1001,21 @@ mod tests {
       },
       "proves": "gwp"
     },
+    "test.ties": {
+      "legal": "test",
+      "source": "https://example.test",
+      "since": "2026.3.0",
+      "inputs": {
+        "cn_code": {"type": "text"}
+      },
+      "outputs": {
+        "rank": {"op": "table", "table": "ties", "column": "rank",
+          "match": [{"column": "code", "prefixOf": {"op": "input", "name": "cn_code"}}]},
+        "label": {"op": "table", "table": "ties", "column": "label", "as": "text",
+          "match": [{"column": "code", "prefixOf": {"op": "input", "name": "cn_code"}}]}
+      },
+      "proves": "rank"
+    },
     "test.controls": {
       "legal": "test",
       "source": "https://example.test",
@@ -1039,7 +1054,27 @@ mod tests {
           "cond": {"op": "input", "name": "flag"},
           "then": {"op": "const", "scalar": "1"},
           "else": {"op": "const", "scalar": "2"}
-        }
+        },
+        "eq_bool": {"op": "eq", "args": [
+          {"op": "input", "name": "flag"},
+          {"op": "const", "bool": true}
+        ]},
+        "eq_bool_literal": {"op": "eq", "args": [
+          {"op": "const", "bool": false},
+          {"op": "const", "bool": false}
+        ]},
+        "ne_bool": {"op": "ne", "args": [
+          {"op": "input", "name": "flag"},
+          {"op": "const", "bool": false}
+        ]},
+        "and_true": {"op": "and", "args": [
+          {"op": "const", "bool": true},
+          {"op": "const", "bool": true}
+        ]},
+        "or_false": {"op": "or", "args": [
+          {"op": "const", "bool": false},
+          {"op": "const", "bool": false}
+        ]}
       },
       "proves": "neg"
     }
@@ -1055,6 +1090,10 @@ mod tests {
             .table(
                 "defaults",
                 r#"{"rows":[{"cn_code":"76","region":"aluminium"},{"cn_code":"7604","region":"profiles"},{"cn_code":"76041090","region":"profiles-8"},{"cn_code":"","region":"never"}]}"#,
+            )
+            .table(
+                "ties",
+                r#"{"rows":[{"code":"76","label":"short","rank":"1"},{"code":"7604","label":"first","rank":"2"},{"code":"7604","label":"second","rank":"3"}]}"#,
             )
     }
 
@@ -1175,6 +1214,22 @@ mod tests {
     }
 
     #[test]
+    fn selects_the_longest_prefix_and_keeps_the_first_tie() {
+        let fixture = fixture();
+        let bundle = fixture.bundle();
+        let longest = invoke(&bundle, "test.ties", r#"{"cn_code":"760410"}"#).unwrap();
+        assert_eq!(
+            bundle.evaluate(&longest).unwrap().outputs["label"],
+            Value::Text(String::from("first"))
+        );
+        let plain = invoke(&bundle, "test.ties", r#"{"cn_code":"76"}"#).unwrap();
+        assert_eq!(
+            bundle.evaluate(&plain).unwrap().outputs["label"],
+            Value::Text(String::from("short"))
+        );
+    }
+
+    #[test]
     fn evaluates_control_forms() {
         let fixture = fixture();
         let bundle = fixture.bundle();
@@ -1201,6 +1256,26 @@ mod tests {
         assert_eq!(outputs["or"], Value::Bool(true));
         assert_eq!(outputs["not"], Value::Bool(false));
         assert_eq!(outputs["select"], scalar("1"));
+        assert_eq!(outputs["eq_bool"], Value::Bool(true));
+        assert_eq!(outputs["eq_bool_literal"], Value::Bool(true));
+        assert_eq!(outputs["ne_bool"], Value::Bool(true));
+        assert_eq!(outputs["and_true"], Value::Bool(true));
+        assert_eq!(outputs["or_false"], Value::Bool(false));
+
+        let flags_off = invoke(
+            &bundle,
+            "test.controls",
+            r#"{"x":"-2.5","date":"2026-06-15","flag":false}"#,
+        )
+        .unwrap();
+        let flags_off = bundle.evaluate(&flags_off).unwrap().outputs;
+        assert_eq!(flags_off["eq_bool"], Value::Bool(false));
+        assert_eq!(flags_off["eq_bool_literal"], Value::Bool(true));
+        assert_eq!(flags_off["ne_bool"], Value::Bool(false));
+        assert_eq!(flags_off["and"], Value::Bool(false));
+        assert_eq!(flags_off["or"], Value::Bool(false));
+        assert_eq!(flags_off["not"], Value::Bool(true));
+        assert_eq!(flags_off["select"], scalar("2"));
     }
 
     #[test]

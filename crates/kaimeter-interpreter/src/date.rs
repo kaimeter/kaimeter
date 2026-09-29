@@ -25,7 +25,8 @@ impl Date {
     /// Returns [`RuleError::InvalidDate`] when the components are not a real
     /// calendar date.
     pub const fn from_parts(year: u16, month: u8, day: u8) -> Result<Self, RuleError> {
-        if year == 0 || month == 0 || month > 12 || day == 0 || day > days_in_month(year, month) {
+        // Invalid months have zero days, so the day bounds reject them too.
+        if year == 0 || day == 0 || day > days_in_month(year, month) {
             return Err(RuleError::InvalidDate);
         }
         Ok(Self { year, month, day })
@@ -139,8 +140,25 @@ mod tests {
             Date::from_iso("2026-12-31").unwrap(),
             Date::from_parts(2026, 12, 31).unwrap()
         );
-        assert!(Date::from_iso("2028-02-29").is_ok());
-        assert!(Date::from_iso("2024-02-29").is_ok());
+        for text in [
+            "2026-01-31",
+            "2026-03-31",
+            "2026-05-31",
+            "2026-07-31",
+            "2026-08-31",
+            "2026-10-31",
+            "2026-12-31",
+            "2026-04-30",
+            "2026-06-30",
+            "2026-09-30",
+            "2026-11-30",
+            "2026-02-28",
+            "2024-02-29",
+            "2028-02-29",
+            "2000-02-29",
+        ] {
+            assert!(Date::from_iso(text).is_ok(), "{text}");
+        }
     }
 
     #[test]
@@ -164,8 +182,13 @@ mod tests {
             "2026-04-31",
             "2026-02-29",
             "2100-02-29",
+            "1900-02-29",
             "2026-aa-01",
             "abcd-01-01",
+            "2026-01-0:",
+            "2:26-01-01",
+            "2026-01x01",
+            "2026-01-01:",
         ] {
             assert_eq!(
                 Date::from_iso(text),
@@ -201,11 +224,11 @@ mod tests {
 
     #[test]
     fn displays_and_parses_iso_dates() {
-        let date: Date = "2026-01-01".parse().unwrap();
-        assert_eq!(date.to_string(), "2026-01-01");
+        let date: Date = "2026-12-31".parse().unwrap();
+        assert_eq!(date.to_string(), "2026-12-31");
         assert_eq!(date.year(), 2026);
-        assert_eq!(date.month(), 1);
-        assert_eq!(date.day(), 1);
+        assert_eq!(date.month(), 12);
+        assert_eq!(date.day(), 31);
         assert_eq!(
             "2028-02-29".parse::<Date>().unwrap().to_string(),
             "2028-02-29"

@@ -2,3 +2,5 @@
 /tmp
 /secrets
 /paper/dist
+/mutants.out
+/mutants.diff
